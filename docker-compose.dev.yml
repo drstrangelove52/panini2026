@@ -1,0 +1,32 @@
+# Für lokale Entwicklung ohne Traefik – direkt über Port 8080 erreichbar
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      - SECRET_KEY=dev-secret-not-for-production
+      - ADMIN_NICKNAME=admin
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin1234}
+      - NTFY_URL=
+      - DATABASE_URL=sqlite:////app/data/panini.db
+    volumes:
+      - panini-data-dev:/app/data
+    networks:
+      - dev-net
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - dev-net
+
+volumes:
+  panini-data-dev:
+
+networks:
+  dev-net:
+    driver: bridge

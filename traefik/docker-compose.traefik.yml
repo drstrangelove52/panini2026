@@ -1,0 +1,36 @@
+# Einmalig auf dem Server ausführen, BEVOR die Panini-App deployed wird.
+# Startet Traefik als Reverse Proxy mit Let's Encrypt SSL.
+#
+# Voraussetzungen:
+#   docker network create web
+#   mkdir -p /opt/traefik && touch /opt/traefik/acme.json && chmod 600 /opt/traefik/acme.json
+#
+# Starten mit:
+#   docker compose -f docker-compose.traefik.yml up -d
+
+services:
+  traefik:
+    image: traefik:v3.2
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /opt/traefik/acme.json:/acme.json
+    networks:
+      - web
+
+networks:
+  web:
+    external: true

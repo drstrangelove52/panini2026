@@ -1,0 +1,42 @@
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_NICKNAME=${ADMIN_NICKNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - NTFY_URL=${NTFY_URL:-}
+      - DATABASE_URL=sqlite:////app/data/panini.db
+    volumes:
+      - panini-data:/app/data
+    networks:
+      - internal
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - internal
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.panini.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.panini.entrypoints=websecure"
+      - "traefik.http.routers.panini.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.panini-http.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.panini-http.entrypoints=web"
+      - "traefik.http.routers.panini-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.services.panini.loadbalancer.server.port=80"
+
+volumes:
+  panini-data:
+
+networks:
+  internal:
+    driver: bridge
+  web:
+    external: true

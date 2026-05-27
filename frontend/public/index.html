@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <meta name="theme-color" content="#1a5c3a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Panini WM 2026 – Tauschbörse</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <header id="header" style="display:none">
+    <div class="logo">Panini <span>WM 2026</span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="user-info" id="user-nick"></span>
+      <button class="btn-logout" id="btn-logout">Abmelden</button>
+    </div>
+  </header>
+
+  <main id="app"></main>
+
+  <nav class="bottom-nav" id="bottom-nav" style="display:none">
+    <button class="nav-btn active" data-page="stickers">
+      <span class="icon">🎴</span>
+      Sticker
+    </button>
+    <button class="nav-btn" data-page="trades">
+      <span class="icon">🤝</span>
+      Tauschen
+    </button>
+    <button class="nav-btn" data-page="admin" id="nav-admin" style="display:none">
+      <span class="icon">⚙️</span>
+      Admin
+    </button>
+  </nav>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
