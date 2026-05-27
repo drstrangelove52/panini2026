@@ -27,7 +27,7 @@ services:
       - "8443:8443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /opt/traefik/acme.json:/acme.json
+      - /opt/panini2026/traefik/acme.json:/acme.json
     networks:
       - web
 
