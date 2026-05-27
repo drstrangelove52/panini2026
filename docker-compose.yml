@@ -30,6 +30,7 @@ services:
       - "traefik.http.routers.panini-http.entrypoints=web"
       - "traefik.http.routers.panini-http.middlewares=redirect-to-https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.port=8443"
       - "traefik.http.services.panini.loadbalancer.server.port=80"
 
 volumes:

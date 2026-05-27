@@ -17,14 +17,14 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.address=:8443"
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/acme.json"
     ports:
       - "80:80"
-      - "443:443"
+      - "8443:8443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /opt/traefik/acme.json:/acme.json
