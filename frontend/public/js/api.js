@@ -60,6 +60,7 @@ export const api = {
 
   // Admin
   adminStats:      ()         => req("GET",    "/admin/stats"),
+  securityLog:     ()         => req("GET",    "/admin/security-log"),
   adminUsers:      ()         => req("GET",    "/admin/users"),
   approveUser:     (id)       => req("POST",   `/admin/users/${id}/approve`),
   revokeUser:      (id)       => req("POST",   `/admin/users/${id}/revoke`),

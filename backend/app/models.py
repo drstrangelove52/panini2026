@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -60,3 +60,14 @@ class UserWant(Base):
     sticker = relationship("Sticker", back_populates="want_entries")
 
     __table_args__ = (UniqueConstraint("user_id", "sticker_id"),)
+
+
+class SecurityEvent(Base):
+    __tablename__ = "security_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    event = Column(String, nullable=False)
+    ip = Column(String, nullable=True)
+    nickname = Column(String, nullable=True)
+    details = Column(String, nullable=True)

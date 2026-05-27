@@ -12,8 +12,8 @@ export async function renderAdmin(container) {
 async function loadAdmin() {
   const el = document.getElementById("admin-content");
   try {
-    const [stats, users] = await Promise.all([api.adminStats(), api.adminUsers()]);
-    el.innerHTML = renderStats(stats) + renderUsers(users) + renderStickerSection();
+    const [stats, users, secLog] = await Promise.all([api.adminStats(), api.adminUsers(), api.securityLog()]);
+    el.innerHTML = renderStats(stats) + renderUsers(users) + renderStickerSection() + renderSecurityLog(secLog);
     bindAdmin(users);
   } catch (e) {
     el.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
@@ -96,6 +96,40 @@ function renderStickerSection() {
         </select>
         <button class="btn btn-primary btn-sm" onclick="window._addSticker()">Hinzufügen</button>
       </div>
+    </div>`;
+}
+
+function renderSecurityLog(events) {
+  const EVENT_STYLE = {
+    LOGIN:         { label: "Login",         color: "#15803d" },
+    LOGIN_FAIL:    { label: "Login Fehler",  color: "#b91c1c" },
+    REGISTER:      { label: "Registrierung", color: "#1d4ed8" },
+    REGISTER_FAIL: { label: "Reg. Fehler",   color: "#b91c1c" },
+  };
+
+  const rows = events.map(e => {
+    const s = EVENT_STYLE[e.event] || { label: e.event, color: "var(--muted)" };
+    const ts = new Date(e.timestamp).toLocaleString("de-CH");
+    return `<tr>
+      <td style="white-space:nowrap;font-size:.78rem">${ts}</td>
+      <td><span style="font-weight:700;color:${s.color}">${s.label}</span></td>
+      <td>${e.nickname || "–"}</td>
+      <td style="font-size:.78rem;font-family:monospace">${e.ip || "–"}</td>
+      <td style="font-size:.75rem;color:var(--muted)">${e.details || ""}</td>
+    </tr>`;
+  }).join("");
+
+  return `
+    <div class="section-card" style="margin-top:16px">
+      <h3>🔐 Zugriffslog <span style="font-size:.8rem;color:var(--muted);font-weight:400">(letzte 200 Einträge)</span></h3>
+      ${events.length === 0
+        ? `<div style="padding:16px;color:var(--muted);font-size:.85rem">Noch keine Einträge</div>`
+        : `<div style="overflow-x:auto">
+            <table class="admin-table">
+              <thead><tr><th>Zeit</th><th>Ereignis</th><th>Nickname</th><th>IP</th><th>Details</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>`}
     </div>`;
 }
 

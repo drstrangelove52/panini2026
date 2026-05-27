@@ -17,6 +17,7 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=web"
+      - "--accesslog=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:8443"
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"

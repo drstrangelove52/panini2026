@@ -101,6 +101,16 @@ def delete_sticker(sticker_id: int, db: Session = Depends(get_db), _=Depends(get
     db.commit()
 
 
+@router.get("/security-log")
+def security_log(db: Session = Depends(get_db), _=Depends(get_admin_user)):
+    events = db.query(models.SecurityEvent)\
+        .order_by(models.SecurityEvent.timestamp.desc())\
+        .limit(200).all()
+    return [{"id": e.id, "timestamp": e.timestamp, "event": e.event,
+             "ip": e.ip, "nickname": e.nickname, "details": e.details}
+            for e in events]
+
+
 def _get_user(user_id: int, db: Session) -> models.User:
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
