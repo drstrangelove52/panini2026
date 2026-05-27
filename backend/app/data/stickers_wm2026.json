@@ -200,6 +200,126 @@
         "number":  null
     },
     {
+        "code":  "CC1",
+        "category":  "special",
+        "description":  "Coca-Cola 1",
+        "is_foil":  false,
+        "country_code":  null,
+        "country_name":  null,
+        "group":  null,
+        "number":  null
+    },
+    {
+        "code":  "CC2",
+        "category":  "special",
+        "description":  "Coca-Cola 2",
+        "is_foil":  false,
+        "country_code":  null,
+        "country_name":  null,
+        "group":  null,
+        "number":  null
+    },
+    {
+        "code":  "CC3",
+        "category":  "special",
+        "description":  "Coca-Cola 3",
+        "is_foil":  false,
+        "country_code":  null,
+        "country_name":  null,
+        "group":  null,
+        "number":  null
+    },
+    {
+        "code":  "CC4",
+        "category":  "special",
+        "description":  "Coca-Cola 4",
+        "is_foil":  false,
+        "country_code":  null,
+        "country_name":  null,
+        "group":  null,
+        "number":  null
+    },
+    {
+        "code":  "CC5",
+        "category":  "special",
+        "description":  "Coca-Cola 5",
+        "is_foil":  false,
+        "country_code":  null,
+        "country_name":  null,
+        "group":  null,
+        "number":  null
+    },
+    {
+        "code":  "CC6",
+        "category":  "special",
+        "description":  "Coca-Cola 6",
+        "is_foil":  false,
+        "country_code":  null,
+        "country_name":  null,
+        "group":  null,
+        "number":  null
+    },
+    {
+        "code":  "CC7",
+        "category":  "special",
+        "description":  "Coca-Cola 7",
+        "is_foil":  false,
+        "country_code":  null,
+        "country_name":  null,
+        "group":  null,
+        "number":  null
+    },
+    {
+        "code":  "CC8",
+        "category":  "special",
+        "description":  "Coca-Cola 8",
+        "is_foil":  false,
+        "country_code":  null,
+        "country_name":  null,
+        "group":  null,
+        "number":  null
+    },
+    {
+        "code":  "CC9",
+        "category":  "special",
+        "description":  "Coca-Cola 9",
+        "is_foil":  false,
+        "country_code":  null,
+        "country_name":  null,
+        "group":  null,
+        "number":  null
+    },
+    {
+        "code":  "CC10",
+        "category":  "special",
+        "description":  "Coca-Cola 10",
+        "is_foil":  false,
+        "country_code":  null,
+        "country_name":  null,
+        "group":  null,
+        "number":  null
+    },
+    {
+        "code":  "CC11",
+        "category":  "special",
+        "description":  "Coca-Cola 11",
+        "is_foil":  false,
+        "country_code":  null,
+        "country_name":  null,
+        "group":  null,
+        "number":  null
+    },
+    {
+        "code":  "CC12",
+        "category":  "special",
+        "description":  "Coca-Cola 12",
+        "is_foil":  false,
+        "country_code":  null,
+        "country_name":  null,
+        "group":  null,
+        "number":  null
+    },
+    {
         "code":  "MEX 1",
         "category":  "team",
         "country_code":  "MEX",
