@@ -10,6 +10,7 @@ let saveTimer = null;
 export async function renderStickers(container) {
   container.innerHTML = `
     <div class="page-title">Meine Sticker</div>
+    <div id="album-stats"></div>
     <div class="tabs">
       <button id="tab-have" class="active" onclick="window._switchTab('have')">📦 Doppelte</button>
       <button id="tab-want" onclick="window._switchTab('want')">🔍 Suche</button>
@@ -55,7 +56,30 @@ export async function renderStickers(container) {
     return;
   }
 
+  renderStats();
   renderList("");
+}
+
+function renderStats() {
+  const el = document.getElementById("album-stats");
+  if (!el || !allStickers.length) return;
+  const total = allStickers.length;
+  const missing = wantSet.size;
+  const duplicates = haveSet.size;
+  const collected = total - missing;
+  const pct = Math.round(collected / total * 100);
+  el.innerHTML = `
+    <div class="album-stats">
+      <div class="stats-progress-bar">
+        <div class="stats-progress-fill" style="width:${pct}%"></div>
+      </div>
+      <div class="stats-label">${collected} von ${total} Stickern gesammelt (${pct}%)</div>
+      <div class="stats-badges">
+        <span class="stats-badge collected">${collected} Gesammelt</span>
+        <span class="stats-badge duplicates">${duplicates} Doppelte</span>
+        <span class="stats-badge missing" onclick="window._switchTab('want')" style="cursor:pointer">${missing} Fehlend</span>
+      </div>
+    </div>`;
 }
 
 function renderList(query) {
@@ -168,13 +192,12 @@ async function toggleSticker(id) {
     else        { pendingWantAdd.push(id); }
   }
 
-  // Update UI immediately
   const btn = document.querySelector(`.sticker-btn[data-id="${id}"]`);
   if (btn) {
     btn.classList.toggle(currentTab === "have" ? "have" : "want", set.has(id));
   }
 
-  // Update group counter
+  renderStats();
   scheduleSave();
 }
 

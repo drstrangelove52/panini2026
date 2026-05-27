@@ -249,6 +249,17 @@ main { padding: 16px; max-width: 700px; margin: 0 auto; }
 .trade-badge.chain    { background: #fff7ed; color: #c2410c; }
 .trade-badge.one_sided{ background: #dbeafe; color: #1d4ed8; }
 
+/* Album statistics */
+.album-stats { padding: 12px 16px; background: var(--card); border-radius: 12px; margin-bottom: 12px; }
+.stats-progress-bar { height: 10px; background: var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 6px; }
+.stats-progress-fill { height: 100%; background: var(--green); border-radius: 6px; transition: width .4s; }
+.stats-label { font-size: .82rem; color: var(--muted); margin-bottom: 8px; }
+.stats-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.stats-badge { font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+.stats-badge.collected  { background: #dcfce7; color: #15803d; }
+.stats-badge.duplicates { background: #fff7ed; color: #c2410c; }
+.stats-badge.missing    { background: #fee2e2; color: #b91c1c; }
+
 .trade-summary { flex: 1; font-size: .9rem; font-weight: 600; }
 .trade-chevron { color: var(--muted); transition: transform .2s; }
 .trade-header.open .trade-chevron { transform: rotate(180deg); }
