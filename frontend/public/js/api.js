@@ -55,7 +55,8 @@ export const api = {
   bulkWant:    (add, remove) => req("POST", "/stickers/my/want/bulk", { add, remove }),
 
   // Trades
-  trades: () => req("GET", "/trades"),
+  trades:       ()                       => req("GET",  "/trades"),
+  confirmTrade: (give_ids, receive_ids)  => req("POST", "/trades/confirm", { give_ids, receive_ids }),
 
   // Admin
   adminStats:      ()         => req("GET",    "/admin/stats"),

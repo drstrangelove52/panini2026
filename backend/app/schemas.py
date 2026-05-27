@@ -104,3 +104,8 @@ class TradeResult(BaseModel):
     color: str
     partners: List[TradePartner] = []
     chain: List[TradeChainStep] = []
+
+
+class TradeConfirm(BaseModel):
+    give_ids: List[int] = []
+    receive_ids: List[int] = []

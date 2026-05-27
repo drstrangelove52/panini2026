@@ -52,6 +52,24 @@ export async function renderTrades(container) {
     });
   });
 
+  el.querySelectorAll(".btn-confirm-trade").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const give_ids = JSON.parse(btn.dataset.give);
+      const receive_ids = JSON.parse(btn.dataset.receive);
+      btn.disabled = true;
+      btn.textContent = "...";
+      try {
+        await api.confirmTrade(give_ids, receive_ids);
+        renderTrades(container);
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = "Tausch durchgeführt ✓";
+        alert("Fehler: " + err.message);
+      }
+    });
+  });
+
   // Auto-open first perfect trade
   const first = el.querySelector(".trade-header");
   if (first) {
@@ -90,7 +108,18 @@ function renderTradeCard(t, i) {
       summary = `${p.nickname} sucht was du hast`;
     }
 
-    body = giveSection + recvSection;
+    if (t.type === "perfect") {
+      const giveIds = JSON.stringify(p.give.map(s => s.id));
+      const recvIds = JSON.stringify(p.receive.map(s => s.id));
+      body = giveSection + recvSection + `
+        <div style="margin-top:12px;text-align:right">
+          <button class="btn btn-confirm-trade" data-give='${giveIds}' data-receive='${recvIds}'>
+            Tausch durchgeführt ✓
+          </button>
+        </div>`;
+    } else {
+      body = giveSection + recvSection;
+    }
   } else if (t.type === "chain") {
     const users = [...new Set(t.chain.flatMap(s => [s.from_user, s.to_user]))].filter(u => u !== "Du");
     summary = `Du + ${users.join(" + ")}`;
