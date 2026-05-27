@@ -3,6 +3,7 @@ import { renderAuth, bindAuth } from "./auth.js";
 import { renderStickers } from "./stickers.js";
 import { renderTrades } from "./trades.js";
 import { renderAdmin } from "./admin.js";
+import { renderLog } from "./log.js";
 
 let currentPage = "stickers";
 
@@ -41,9 +42,10 @@ function showApp() {
   document.getElementById("user-nick").textContent = user?.nickname || "";
   document.getElementById("bottom-nav").style.display = "flex";
 
-  // Show/hide admin tab
   const adminTab = document.getElementById("nav-admin");
   if (adminTab) adminTab.style.display = isAdmin() ? "flex" : "none";
+  const logTab = document.getElementById("nav-log");
+  if (logTab) logTab.style.display = isAdmin() ? "flex" : "none";
 
   if (!isActive()) {
     document.getElementById("app").innerHTML = `
@@ -77,9 +79,10 @@ function navigateTo(page) {
 
   const main = document.getElementById("app");
   switch (page) {
-    case "stickers": renderStickers(main);    break;
-    case "trades":   renderTrades(main);      break;
-    case "admin":    renderAdmin(main);       break;
+    case "stickers": renderStickers(main);  break;
+    case "trades":   renderTrades(main);    break;
+    case "admin":    renderAdmin(main);     break;
+    case "log":      renderLog(main);       break;
   }
 }
 
