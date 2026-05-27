@@ -1,5 +1,29 @@
 import { api } from "./api.js";
 
+const TEAM_LAYOUT = {
+  1:  { row: 1, col: 3, span: 1 },
+  2:  { row: 1, col: 4, span: 1 },
+  3:  { row: 2, col: 1, span: 1 },
+  4:  { row: 2, col: 2, span: 1 },
+  5:  { row: 2, col: 3, span: 1 },
+  6:  { row: 2, col: 4, span: 1 },
+  7:  { row: 3, col: 1, span: 1 },
+  8:  { row: 3, col: 2, span: 1 },
+  9:  { row: 3, col: 3, span: 1 },
+  10: { row: 3, col: 4, span: 1 },
+  // row 4 = Seitentrennlinie
+  11: { row: 5, col: 1, span: 1 },
+  12: { row: 5, col: 2, span: 1 },
+  13: { row: 5, col: 3, span: 2 },
+  14: { row: 6, col: 1, span: 1 },
+  15: { row: 6, col: 2, span: 1 },
+  16: { row: 6, col: 3, span: 1 },
+  17: { row: 6, col: 4, span: 1 },
+  18: { row: 7, col: 2, span: 1 },
+  19: { row: 7, col: 3, span: 1 },
+  20: { row: 7, col: 4, span: 1 },
+};
+
 let allStickers = [];
 let haveSet = new Set();
 let wantSet = new Set();
@@ -146,23 +170,47 @@ function renderList(query) {
 }
 
 function renderGroup(name, code, meta, stickers) {
-  const marked = stickers.filter(s =>
-    (currentTab === "have" ? haveSet : wantSet).has(s.id)
-  ).length;
+  const activeSet = currentTab === "have" ? haveSet : wantSet;
+  const marked = stickers.filter(s => activeSet.has(s.id)).length;
+  const isTeam = stickers.length > 0 && stickers[0].category === "team";
 
-  const btns = stickers.map(s => {
-    const inHave = haveSet.has(s.id);
-    const inWant = wantSet.has(s.id);
-    let cls = "";
-    if (currentTab === "have" && inHave) cls = "have";
-    else if (currentTab === "want" && inWant) cls = "want";
-    if (s.is_foil) cls += " foil";
-    const num = s.number || "";
-    return `<button class="sticker-btn ${cls}" data-id="${s.id}" title="${s.description || ""}">
-      <span class="s-code">${s.code}</span>
-      <span class="s-desc">${s.description || ""}</span>
-    </button>`;
-  }).join("");
+  let btns = "";
+  if (isTeam) {
+    btns = stickers.map(s => {
+      const pos = TEAM_LAYOUT[s.number];
+      if (!pos) return "";
+      const inHave = haveSet.has(s.id);
+      const inWant = wantSet.has(s.id);
+      let cls = "";
+      if (currentTab === "have" && inHave) cls = " have";
+      else if (currentTab === "want" && inWant) cls = " want";
+      if (s.is_foil) cls += " foil";
+      if (pos.span > 1) cls += " wide";
+      return `<button class="sticker-btn album-btn${cls}"
+        data-id="${s.id}"
+        style="grid-row:${pos.row};grid-column:${pos.col}/span ${pos.span}"
+        title="${s.description || ""}">
+        <span class="s-code">${s.code}</span>
+        <span class="s-desc">${s.description || ""}</span>
+      </button>`;
+    }).join("") +
+    `<div class="album-page-sep"></div>`;
+  } else {
+    btns = stickers.map(s => {
+      const inHave = haveSet.has(s.id);
+      const inWant = wantSet.has(s.id);
+      let cls = "";
+      if (currentTab === "have" && inHave) cls = "have";
+      else if (currentTab === "want" && inWant) cls = "want";
+      if (s.is_foil) cls += " foil";
+      return `<button class="sticker-btn ${cls}" data-id="${s.id}" title="${s.description || ""}">
+        <span class="s-code">${s.code}</span>
+        <span class="s-desc">${s.description || ""}</span>
+      </button>`;
+    }).join("");
+  }
+
+  const gridClass = isTeam ? "sticker-grid sticker-grid-album hidden" : "sticker-grid hidden";
 
   return `
     <div class="country-group">
@@ -174,7 +222,7 @@ function renderGroup(name, code, meta, stickers) {
           <span class="chevron">▾</span>
         </span>
       </div>
-      <div class="sticker-grid hidden">${btns}</div>
+      <div class="${gridClass}">${btns}</div>
     </div>`;
 }
 
