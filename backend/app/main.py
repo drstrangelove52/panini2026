@@ -37,7 +37,7 @@ def _seed_stickers():
         if db.query(models.Sticker).count() > 0:
             return
         data_path = os.path.join(os.path.dirname(__file__), "data", "stickers_wm2026.json")
-        with open(data_path, encoding="utf-8") as f:
+        with open(data_path, encoding="utf-8-sig") as f:
             stickers = json.load(f)
         for i, s in enumerate(stickers):
             db.add(models.Sticker(
