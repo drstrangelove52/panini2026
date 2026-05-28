@@ -3,7 +3,6 @@ import { api } from "./api.js";
 let allStickers    = [];
 let haveQtyMap     = new Map(); // sticker_id → quantity (1=im Album, ≥2=hat Doppelte)
 let wantSet        = new Set(); // sticker_id → explizit gesucht
-let currentTab     = "have";   // "have" | "want"
 let pendingHaveAdd = [], pendingHaveRem = [];
 let pendingWantAdd = [], pendingWantRem = [];
 let saveTimer      = null;
@@ -13,10 +12,6 @@ export async function renderStickers(container) {
   container.innerHTML = `
     <div class="page-title">Meine Sticker</div>
     <div id="album-stats"></div>
-    <div class="sticker-tabs">
-      <button class="sticker-tab active" data-tab="have">📦 Sammlung</button>
-      <button class="sticker-tab" data-tab="want">🔍 Wunschliste</button>
-    </div>
     <div class="search-bar">
       <input id="sticker-search" type="search" placeholder="Suche: GER 1, Torwart, ..." />
     </div>
@@ -30,20 +25,9 @@ export async function renderStickers(container) {
     ">Gespeichert ✓</div>
   `;
 
-  const searchEl = document.getElementById("sticker-search");
-  searchEl.addEventListener("input", e => {
+  document.getElementById("sticker-search").addEventListener("input", e => {
     closePopover();
     renderList(e.target.value);
-  });
-
-  container.querySelectorAll(".sticker-tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      currentTab = tab.dataset.tab;
-      container.querySelectorAll(".sticker-tab").forEach(t => t.classList.remove("active"));
-      tab.classList.add("active");
-      closePopover();
-      renderList(searchEl.value);
-    });
   });
 
   try {
@@ -106,17 +90,12 @@ function renderList(query) {
   if (!container) return;
 
   const q = query.toLowerCase().trim();
-  let filtered = allStickers.filter(s => {
+  const filtered = allStickers.filter(s => {
     if (!q) return true;
     return s.code.toLowerCase().includes(q) ||
            (s.country_name  || "").toLowerCase().includes(q) ||
            (s.description   || "").toLowerCase().includes(q);
   });
-
-  // Wunschliste zeigt nur fehlende Sticker (die man noch nicht hat)
-  if (currentTab === "want") {
-    filtered = filtered.filter(s => !haveQtyMap.has(s.id));
-  }
 
   const groups       = {};
   const specialGroup = [];
@@ -135,30 +114,21 @@ function renderList(query) {
   for (const [, g] of Object.entries(groups)) {
     html += renderGroup(g.name, g.stickers[0]?.country_code || "", `Gruppe ${g.group}`, g.stickers);
   }
-
-  if (!html) {
-    const msg = currentTab === "want"
-      ? `<div class="empty-icon">🎉</div>Alle fehlenden Sticker gefunden – oder Sammlung noch leer!`
-      : `<div class="empty-icon">🔍</div>Keine Sticker gefunden`;
-    html = `<div class="empty-state">${msg}</div>`;
-  }
+  if (!html) html = `<div class="empty-state"><div class="empty-icon">🔍</div>Keine Sticker gefunden</div>`;
 
   container.innerHTML = html;
 
   container.querySelectorAll(".sticker-btn").forEach(btn => {
     btn.addEventListener("click", e => {
       e.stopPropagation();
-      const id = parseInt(btn.dataset.id);
-      if (currentTab === "want") toggleWant(id, btn);
-      else                       toggleHave(id, btn);
+      toggleSticker(parseInt(btn.dataset.id), btn);
     });
   });
 
   container.querySelectorAll(".country-header").forEach(header => {
     const grid = header.nextElementSibling;
-    const hasMarked = currentTab === "want"
-      ? grid.querySelector(".sticker-btn.want")
-      : grid.querySelector(".sticker-btn.collected, .sticker-btn.duplicate");
+    // Auto-open if group has any marked sticker (collected, duplicate or wanted)
+    const hasMarked = grid.querySelector(".sticker-btn.collected, .sticker-btn.duplicate, .sticker-btn.want");
     if (hasMarked || q) {
       header.classList.add("open");
       grid.classList.remove("hidden");
@@ -174,10 +144,7 @@ function renderList(query) {
 
 function renderGroup(name, code, meta, stickers) {
   const isTeam = stickers.length > 0 && stickers[0].category === "team";
-
-  const marked = currentTab === "want"
-    ? stickers.filter(s => wantSet.has(s.id)).length
-    : stickers.filter(s => haveQtyMap.has(s.id)).length;
+  const marked = stickers.filter(s => haveQtyMap.has(s.id)).length;
 
   const makeBtn = s => {
     const qty      = haveQtyMap.get(s.id) || 0;
@@ -197,10 +164,8 @@ function renderGroup(name, code, meta, stickers) {
   let btns = stickers.map(s => makeBtn(s)).join("");
   if (isTeam) btns += `<div class="album-page-sep"></div>`;
 
-  const gridClass    = isTeam ? "sticker-grid sticker-grid-album hidden" : "sticker-grid hidden";
-  const countLabel   = currentTab === "want"
-    ? (marked > 0 ? `🔍 ${marked}` : "")
-    : (marked > 0 ? `✓ ${marked}` : "");
+  const gridClass  = isTeam ? "sticker-grid sticker-grid-album hidden" : "sticker-grid hidden";
+  const countLabel = marked > 0 ? `✓ ${marked}` : "";
 
   return `
     <div class="country-group">
@@ -238,37 +203,31 @@ function updateStickerBtn(id) {
   }
 }
 
-// ── Have toggle ────────────────────────────────────────────────────────────────
+// ── Toggle (cycle: none → want → have → popover) ──────────────────────────────
 
-async function toggleHave(id, btnEl) {
-  if (haveQtyMap.has(id)) {
+function toggleSticker(id, btnEl) {
+  const qty = haveQtyMap.get(id) || 0;
+
+  if (qty > 0) {
+    // Grün → Qty-Popover (Doppelte / Entfernen)
     showQtyPopover(id, btnEl);
     return;
   }
-  // Ersten Tap: im Album markieren (qty = 1)
-  haveQtyMap.set(id, 1);
-  // Falls auf Wunschliste: automatisch entfernen
+
   if (wantSet.has(id)) {
+    // Blau → Grün: gefunden! Von Wunschliste ins Album
     wantSet.delete(id);
     pendingWantRem.push(id);
-  }
-  pendingHaveAdd.push(id);
-  updateStickerBtn(id);
-  renderStats();
-  scheduleSave();
-}
-
-// ── Want toggle ────────────────────────────────────────────────────────────────
-
-function toggleWant(id) {
-  if (wantSet.has(id)) {
-    wantSet.delete(id);
-    pendingWantRem.push(id);
+    haveQtyMap.set(id, 1);
+    pendingHaveAdd.push(id);
   } else {
+    // Grau → Blau: suche ich
     wantSet.add(id);
     pendingWantAdd.push(id);
   }
+
   updateStickerBtn(id);
+  renderStats();
   scheduleSave();
 }
 
@@ -291,7 +250,6 @@ function showQtyPopover(id, btnEl) {
   document.body.appendChild(pop);
   activePopover = pop;
 
-  // Position: prefer below, fall back to above
   const rect = btnEl.getBoundingClientRect();
   const popH = pop.offsetHeight || 54;
   const popW = pop.offsetWidth  || 190;
