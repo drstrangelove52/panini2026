@@ -1,5 +1,15 @@
 import { api } from "./api.js";
 
+// Seitenzahlen im Panini WM 2026 Album (Seite wo die Mannschaft beginnt)
+const TEAM_PAGE = {
+  MEX:  8, RSA: 10, KOR: 12, CZE: 14, CAN: 16, BIH: 18, QAT: 20, SUI: 22,
+  BRA: 24, MAR: 26, HAI: 28, SCO: 30, USA: 32, PAR: 34, AUS: 36, TUR: 38,
+  GER: 40, CUW: 42, CIV: 44, ECU: 46, NED: 48, JPN: 50, SWE: 52, TUN: 54,
+  BEL: 58, EGY: 60, IRN: 62, NZL: 64, ESP: 66, CPV: 68, KSA: 70, URU: 72,
+  FRA: 74, SEN: 76, IRQ: 78, NOR: 80, ARG: 82, ALG: 84, AUT: 86, JOR: 88,
+  POR: 90, COD: 92, UZB: 94, COL: 96, ENG: 98, CRO: 100, GHA: 102, PAN: 104,
+};
+
 let allStickers    = [];
 let haveQtyMap     = new Map(); // sticker_id → quantity (1=im Album, ≥2=hat Doppelte)
 let wantSet        = new Set(); // sticker_id → explizit gesucht
@@ -112,7 +122,10 @@ function renderList(query) {
   let html = "";
   if (specialGroup.length) html += renderGroup("Spezial-Sticker", "Spezial", "", specialGroup);
   for (const [, g] of Object.entries(groups)) {
-    html += renderGroup(g.name, g.stickers[0]?.country_code || "", `Gruppe ${g.group}`, g.stickers);
+    const code = g.stickers[0]?.country_code || "";
+    const page = TEAM_PAGE[code];
+    const meta = page ? `Gruppe ${g.group} · S. ${page}` : `Gruppe ${g.group}`;
+    html += renderGroup(g.name, code, meta, g.stickers);
   }
   if (!html) html = `<div class="empty-state"><div class="empty-icon">🔍</div>Keine Sticker gefunden</div>`;
 
