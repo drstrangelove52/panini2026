@@ -57,7 +57,7 @@ async function loadLog() {
         <td>${warn}<span style="font-weight:700;color:${s.color}">${s.label}</span></td>
         <td>${e.nickname || "–"}</td>
         <td style="font-family:monospace;font-size:.78rem">${e.ip || "–"}</td>
-        <td style="font-size:.9rem">${flag} ${e.country_code || "?"}</td>
+        <td style="font-size:.9rem">${flag}</td>
         <td style="font-size:.75rem;color:var(--muted)">${e.details || ""}</td>
       </tr>`;
     }).join("");
