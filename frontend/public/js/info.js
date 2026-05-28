@@ -38,9 +38,9 @@ export function renderInfo(container) {
           <span class="info-step-icon">×2</span>
           <div>
             <strong>Doppelte erfassen — 3× tippen</strong><br>
-            Auf einen grünen Sticker tippen öffnet das Menü für Mehrfache.
-            Mit <strong>+</strong> weitere Exemplare hinzufügen,
-            mit <strong>🗑</strong> den Sticker wieder entfernen.
+            Doppelte Sticker sind wichtig fürs Tauschen! Nochmals auf den
+            grünen Sticker tippen und mit <strong>+</strong> jeden weiteren
+            erfassen. <strong>🗑</strong> entfernt ihn wieder.
           </div>
         </div>
         <div class="info-step">
