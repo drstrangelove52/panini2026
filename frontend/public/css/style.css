@@ -431,6 +431,16 @@ main { padding: 16px; max-width: 700px; margin: 0 auto; }
 
 .form-switch { text-align: center; margin-top: 14px; font-size: .88rem; color: var(--muted); }
 .form-switch a { color: var(--green); cursor: pointer; font-weight: 600; }
+.privacy-hint {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: .78rem;
+  color: #166534;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
 
 /* ── ALERT ── */
 .alert {

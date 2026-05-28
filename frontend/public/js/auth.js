@@ -30,6 +30,11 @@ export function renderAuth(onSuccess) {
           <label>Passwort</label>
           <input id="reg-pw" type="password" placeholder="Mindestens 4 Zeichen" autocomplete="new-password" />
         </div>
+        <div class="privacy-hint">
+          🔒 <strong>Datenschutz-Hinweis:</strong> Verwende einen frei gewählten Nickname
+          und kein echtes Passwort, das du anderswo benutzt.
+          Es werden keine E-Mail-Adressen oder persönlichen Daten gespeichert.
+        </div>
         <button class="btn btn-primary" id="btn-register">Registrieren</button>
         <div class="form-switch">Schon ein Konto? <a id="show-login">Anmelden</a></div>
       </div>

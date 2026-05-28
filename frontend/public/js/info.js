@@ -68,8 +68,9 @@ export function renderInfo(container) {
       </ul>
     </div>
 
-    <div style="text-align:center;font-size:.75rem;color:var(--muted);padding:8px 0 4px">
-      Panini WM 2026 Tauschbörse · Made with ❤️ for the family
+    <div style="text-align:center;font-size:.75rem;color:var(--muted);padding:8px 0 4px;line-height:1.8">
+      Panini WM 2026 Tauschbörse<br>
+      Entwickelt von <strong style="color:var(--text)">Martin Nigg</strong> · Made with ❤️ for the family
     </div>
   `;
 }
