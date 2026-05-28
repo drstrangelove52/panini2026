@@ -19,18 +19,28 @@ export function renderInfo(container) {
       <h3>🕹️ So funktioniert es</h3>
       <div class="info-steps">
         <div class="info-step">
-          <span class="info-step-icon">📦</span>
+          <span class="info-step-icon" style="background:#dbeafe;border-color:#93c5fd">🔍</span>
           <div>
-            <strong>Doppelte erfassen</strong><br>
-            Im Tab <em>Doppelte</em> auf einen Sticker tippen = als doppelt markieren.
-            Nochmals tippen = Anzahl anpassen (−&nbsp;/&nbsp;+).
+            <strong>Sticker suchen — 1× tippen</strong><br>
+            Der Sticker wird <em style="color:var(--sided)">blau</em> markiert:
+            du suchst ihn aktiv. So weiss die Tauschbörse, was du brauchst.
           </div>
         </div>
         <div class="info-step">
-          <span class="info-step-icon">🔍</span>
+          <span class="info-step-icon" style="background:#dcfce7;border-color:#86efac">✓</span>
           <div>
-            <strong>Fehlende markieren</strong><br>
-            Im Tab <em>Fehlende</em> auf einen Sticker tippen = als fehlend markieren.
+            <strong>Sticker eingeklebt — 2× tippen</strong><br>
+            Der Sticker wird <em style="color:var(--perfect)">grün</em>:
+            er ist im Album. Vom Suchenden zum Besitzer — ein weiterer Tap.
+          </div>
+        </div>
+        <div class="info-step">
+          <span class="info-step-icon">×2</span>
+          <div>
+            <strong>Doppelte erfassen — 3× tippen</strong><br>
+            Auf einen grünen Sticker tippen öffnet das Menü für Mehrfache.
+            Mit <strong>+</strong> weitere Exemplare hinzufügen,
+            mit <strong>🗑</strong> den Sticker wieder entfernen.
           </div>
         </div>
         <div class="info-step">
@@ -38,8 +48,9 @@ export function renderInfo(container) {
           <div>
             <strong>Tauschen</strong><br>
             Im Bereich <em>Tauschen</em> werden automatisch passende
-            Tauschpartner vorgeschlagen — perfekte Tausche grün,
-            Ketten orange, einseitige Angebote blau.
+            Partner vorgeschlagen — <em style="color:var(--perfect)">grün</em> für
+            perfekte Tausche, <em style="color:var(--chain)">orange</em> für
+            Ketten, <em style="color:var(--sided)">blau</em> für einseitige Angebote.
           </div>
         </div>
       </div>
