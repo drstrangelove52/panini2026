@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from ..database import get_db
 from .. import models
-from ..schemas import UserCreate, UserLogin, Token, UserOut
+from ..schemas import UserCreate, UserLogin, Token, UserOut, PasswordChange
 from ..auth import hash_password, verify_password, create_access_token, get_current_user
 from ..ntfy import notify
 from ..geo import geolocate
+from ..rate_limiter import rate_limiter
 
 router = APIRouter()
 
@@ -71,6 +72,8 @@ async def log_access(request: Request, db: Session = Depends(get_db)):
 @router.post("/register")
 async def register(data: UserCreate, request: Request, db: Session = Depends(get_db)):
     ip = _get_ip(request)
+    if not rate_limiter.is_allowed(f"register:{ip}", limit=5, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Zu viele Registrierungsversuche. Bitte warte einen Moment.")
     if db.query(models.User).filter(models.User.nickname == data.nickname).first():
         await _log(db, "REGISTER_FAIL", ip, data.nickname, "Nickname bereits vergeben")
         raise HTTPException(status_code=400, detail="Nickname bereits vergeben")
@@ -93,6 +96,8 @@ async def register(data: UserCreate, request: Request, db: Session = Depends(get
 @router.post("/login", response_model=Token)
 async def login(data: UserLogin, request: Request, db: Session = Depends(get_db)):
     ip = _get_ip(request)
+    if not rate_limiter.is_allowed(f"login:{ip}", limit=10, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Zu viele Anmeldeversuche. Bitte warte eine Minute.")
     user = db.query(models.User).filter(models.User.nickname == data.nickname).first()
     if not user or not verify_password(data.password, user.password_hash):
         await _log(db, "LOGIN_FAIL", ip, data.nickname, "Falscher Nickname oder Passwort")
@@ -108,3 +113,16 @@ async def login(data: UserLogin, request: Request, db: Session = Depends(get_db)
 @router.get("/me", response_model=UserOut)
 def me(user: models.User = Depends(get_current_user)):
     return user
+
+
+@router.patch("/me/password", status_code=204)
+async def change_password(data: PasswordChange, request: Request,
+                          db: Session = Depends(get_db),
+                          user: models.User = Depends(get_current_user)):
+    ip = _get_ip(request)
+    if not rate_limiter.is_allowed(f"pw_change:{ip}", limit=5, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Zu viele Anfragen. Bitte warte einen Moment.")
+    if not verify_password(data.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Aktuelles Passwort ist falsch")
+    user.password_hash = hash_password(data.new_password)
+    db.commit()

@@ -43,6 +43,8 @@ export const api = {
   register:  (nickname, password) => req("POST", "/auth/register", { nickname, password }),
   login:     (nickname, password) => req("POST", "/auth/login",    { nickname, password }),
   me:        ()                   => req("GET",  "/auth/me"),
+  changePassword: (current_password, new_password) =>
+                    req("PATCH", "/auth/me/password", { current_password, new_password }),
 
   // Stickers
   stickers:    ()          => req("GET",    "/stickers"),
@@ -57,8 +59,11 @@ export const api = {
   bulkWant:    (add, remove) => req("POST", "/stickers/my/want/bulk", { add, remove }),
 
   // Trades
-  trades:       ()                       => req("GET",  "/trades"),
-  confirmTrade: (give_ids, receive_ids)  => req("POST", "/trades/confirm", { give_ids, receive_ids }),
+  trades:          ()                                  => req("GET",    "/trades"),
+  confirmTrade:    (give_ids, receive_ids, partner_id) => req("POST",   "/trades/confirm", { give_ids, receive_ids, partner_id }),
+  tradePending:    ()                                  => req("GET",    "/trades/pending"),
+  confirmPending:  (id)                                => req("POST",   `/trades/pending/${id}/confirm`),
+  dismissPending:  (id)                                => req("DELETE", `/trades/pending/${id}`),
 
   // Admin
   adminStats:      ()         => req("GET",    "/admin/stats"),

@@ -63,6 +63,24 @@ class UserWant(Base):
     __table_args__ = (UniqueConstraint("user_id", "sticker_id"),)
 
 
+class TradePending(Base):
+    """
+    Created when User A confirms a trade with User B.
+    Stays until B also confirms (or dismisses).
+    give_ids / receive_ids are from A's perspective (JSON arrays of sticker IDs).
+    """
+    __tablename__ = "trade_pending"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    confirmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    partner_id   = Column(Integer, ForeignKey("users.id"), nullable=False)
+    give_ids     = Column(String, nullable=False)   # JSON: sticker IDs confirmer gave
+    receive_ids  = Column(String, nullable=False)   # JSON: sticker IDs confirmer received
+    confirmed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    confirmer = relationship("User", foreign_keys=[confirmer_id])
+
+
 class SecurityEvent(Base):
     __tablename__ = "security_events"
 

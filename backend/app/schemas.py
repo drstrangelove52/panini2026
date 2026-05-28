@@ -98,6 +98,7 @@ class TradeSticker(BaseModel):
 
 
 class TradePartner(BaseModel):
+    user_id: int
     nickname: str
     give: List[TradeSticker] = []
     receive: List[TradeSticker] = []
@@ -120,3 +121,27 @@ class TradeResult(BaseModel):
 class TradeConfirm(BaseModel):
     give_ids: List[int] = []
     receive_ids: List[int] = []
+    partner_id: Optional[int] = None
+
+
+class TradePendingOut(BaseModel):
+    id: int
+    confirmer_nickname: str
+    # From MY (partner's) perspective: what I get and what I give
+    i_receive: List[TradeSticker] = []   # stickers coming to me (confirmer gave these)
+    i_give: List[TradeSticker] = []      # stickers leaving me (confirmer received these)
+    give_ids: List[int] = []             # raw IDs needed for confirm call
+    receive_ids: List[int] = []          # raw IDs needed for confirm call
+    confirmed_at: Optional[datetime] = None
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v):
+        if len(v) < 4:
+            raise ValueError("Passwort muss mindestens 4 Zeichen haben")
+        return v

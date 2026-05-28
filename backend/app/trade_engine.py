@@ -13,6 +13,17 @@ def _get_ids(user_id: int, table, db: Session) -> Set[int]:
     return {row.sticker_id for row in db.query(table).filter(table.user_id == user_id).all()}
 
 
+def _get_tradeable_ids(user_id: int, db: Session) -> Set[int]:
+    """Sticker IDs where user owns qty ≥ 2 (in-album copy + at least one spare)."""
+    return {
+        row.sticker_id
+        for row in db.query(models.UserHave).filter(
+            models.UserHave.user_id == user_id,
+            models.UserHave.quantity >= 2,
+        ).all()
+    }
+
+
 def find_trades(current_user_id: int, db: Session, max_chain: int = 4) -> List[TradeResult]:
     other_users = db.query(models.User).filter(
         models.User.is_active == True,
@@ -23,7 +34,7 @@ def find_trades(current_user_id: int, db: Session, max_chain: int = 4) -> List[T
     if not other_users:
         return []
 
-    my_have = _get_ids(current_user_id, models.UserHave, db)
+    my_have = _get_tradeable_ids(current_user_id, db)  # qty ≥ 2 → has spare
     my_want = _get_ids(current_user_id, models.UserWant, db)
 
     if not my_have and not my_want:
@@ -36,7 +47,7 @@ def find_trades(current_user_id: int, db: Session, max_chain: int = 4) -> List[T
     have: Dict[int, Set[int]] = {current_user_id: my_have}
     want: Dict[int, Set[int]] = {current_user_id: my_want}
     for u in other_users:
-        have[u.id] = _get_ids(u.id, models.UserHave, db)
+        have[u.id] = _get_tradeable_ids(u.id, db)  # only offer spares
         want[u.id] = _get_ids(u.id, models.UserWant, db)
 
     # can_give[(a,b)] = sticker IDs a has that b wants
@@ -66,6 +77,7 @@ def find_trades(current_user_id: int, db: Session, max_chain: int = 4) -> List[T
             results.append(TradeResult(
                 type="perfect", label="Perfekter Tausch", color="green",
                 partners=[TradePartner(
+                    user_id=u.id,
                     nickname=u.nickname,
                     give=[_to_schema(get_s(s)) for s in give_ids],
                     receive=[_to_schema(get_s(s)) for s in recv_ids],
@@ -75,6 +87,7 @@ def find_trades(current_user_id: int, db: Session, max_chain: int = 4) -> List[T
             results.append(TradeResult(
                 type="one_sided", label="Einseitiger Tausch", color="blue",
                 partners=[TradePartner(
+                    user_id=u.id,
                     nickname=u.nickname, give=[],
                     receive=[_to_schema(get_s(s)) for s in recv_ids],
                 )],
@@ -83,6 +96,7 @@ def find_trades(current_user_id: int, db: Session, max_chain: int = 4) -> List[T
             results.append(TradeResult(
                 type="one_sided", label="Einseitiger Tausch", color="blue",
                 partners=[TradePartner(
+                    user_id=u.id,
                     nickname=u.nickname,
                     give=[_to_schema(get_s(s)) for s in give_ids],
                     receive=[],

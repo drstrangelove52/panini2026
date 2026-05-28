@@ -15,7 +15,7 @@ export async function renderStickers(container) {
     <div class="page-title">Meine Sticker</div>
     <div id="album-stats"></div>
     <div class="tabs">
-      <button id="tab-have" class="active" onclick="window._switchTab('have')">📦 Doppelte</button>
+      <button id="tab-have" class="active" onclick="window._switchTab('have')">📚 Sammlung</button>
       <button id="tab-want" onclick="window._switchTab('want')">🔍 Fehlende</button>
     </div>
     <div id="mode-banner"></div>
@@ -66,11 +66,12 @@ export async function renderStickers(container) {
   renderList("");
 }
 
-function stickerStateCls(inHave, inWant) {
-  if (inHave && inWant) return "both";
-  if (inHave) return "have";
-  if (inWant) return "want";
-  return "";
+function stickerStateCls(qty, inWant) {
+  if (qty >= 1 && inWant) return "both";      // in album but also on want list (edge case)
+  if (qty >= 2)           return "duplicate"; // in album + spares to trade
+  if (qty === 1)          return "collected"; // in album, no spares
+  if (inWant)             return "want";      // missing, looking for it
+  return "";                                  // not tracked
 }
 
 function updateModeBanner() {
@@ -78,27 +79,34 @@ function updateModeBanner() {
   if (!el) return;
   const isHave = currentTab === "have";
   el.className = "mode-banner " + (isHave ? "mode-have" : "mode-want");
+  const legend = `<span class="mode-legend">
+    <span class="mode-dot collected"></span>Im Album &nbsp;
+    <span class="mode-dot duplicate"></span>Doppelt &nbsp;
+    <span class="mode-dot want"></span>Fehlend
+  </span>`;
   el.innerHTML = isHave
-    ? `<span class="mode-dot have"></span> Tippen markiert als <strong>Doppelt</strong> <span class="mode-legend"><span class="mode-dot have"></span>Doppelt &nbsp; <span class="mode-dot want"></span>Fehlend</span>`
-    : `<span class="mode-dot want"></span> Tippen markiert als <strong>Fehlend</strong> <span class="mode-legend"><span class="mode-dot have"></span>Doppelt &nbsp; <span class="mode-dot want"></span>Fehlend</span>`;
+    ? `<span class="mode-dot collected"></span>
+       1× Tippen = <strong>Im Album</strong> · Nochmals = Anzahl verwalten ${legend}`
+    : `<span class="mode-dot want"></span>
+       Tippen markiert als <strong>Fehlend</strong> ${legend}`;
 }
 
 function renderStats() {
   const el = document.getElementById("album-stats");
   if (!el || !allStickers.length) return;
-  const total = allStickers.length;
-  const missing = wantSet.size;
-  const duplicates = haveQtyMap.size;
-  const collected = total - missing;
-  const pct = Math.round(collected / total * 100);
+  const total      = allStickers.length;
+  const collected  = haveQtyMap.size;  // qty ≥ 1 = in album
+  const duplicates = [...haveQtyMap.values()].filter(q => q >= 2).length; // qty ≥ 2 = has spares
+  const missing    = wantSet.size;
+  const pct        = Math.round(collected / total * 100);
   el.innerHTML = `
     <div class="album-stats">
       <div class="stats-progress-bar">
         <div class="stats-progress-fill" style="width:${pct}%"></div>
       </div>
-      <div class="stats-label">${collected} von ${total} Stickern gesammelt (${pct}%)</div>
+      <div class="stats-label">${collected} von ${total} Stickern im Album (${pct}%)</div>
       <div class="stats-badges">
-        <span class="stats-badge collected">${collected} Gesammelt</span>
+        <span class="stats-badge collected">${collected} Im Album</span>
         <span class="stats-badge duplicates">${duplicates} Doppelte</span>
         <span class="stats-badge missing" onclick="window._switchTab('want')" style="cursor:pointer">${missing} Fehlend</span>
       </div>
@@ -178,12 +186,12 @@ function renderGroup(name, code, meta, stickers) {
   let btns = "";
   if (isTeam) {
     btns = stickers.map(s => {
-      const inHave = haveQtyMap.has(s.id);
-      const inWant = wantSet.has(s.id);
-      const qty = haveQtyMap.get(s.id) || 0;
-      const stateCls = stickerStateCls(inHave, inWant);
-      const foilCls = s.is_foil ? " foil" : "";
-      const qtyBadge = qty > 1 ? `<span class="qty-badge">×${qty}</span>` : "";
+      const qty      = haveQtyMap.get(s.id) || 0;
+      const inWant   = wantSet.has(s.id);
+      const stateCls = stickerStateCls(qty, inWant);
+      const foilCls  = s.is_foil ? " foil" : "";
+      const spares   = qty >= 2 ? qty - 1 : 0;
+      const qtyBadge = spares > 0 ? `<span class="qty-badge">×${spares}</span>` : "";
       return `<button class="sticker-btn album-btn album-pos-${s.number} ${stateCls}${foilCls}"
         data-id="${s.id}"
         title="${s.description || ""}">
@@ -195,12 +203,12 @@ function renderGroup(name, code, meta, stickers) {
     `<div class="album-page-sep"></div>`;
   } else {
     btns = stickers.map(s => {
-      const inHave = haveQtyMap.has(s.id);
-      const inWant = wantSet.has(s.id);
-      const qty = haveQtyMap.get(s.id) || 0;
-      const stateCls = stickerStateCls(inHave, inWant);
-      const foilCls = s.is_foil ? " foil" : "";
-      const qtyBadge = qty > 1 ? `<span class="qty-badge">×${qty}</span>` : "";
+      const qty      = haveQtyMap.get(s.id) || 0;
+      const inWant   = wantSet.has(s.id);
+      const stateCls = stickerStateCls(qty, inWant);
+      const foilCls  = s.is_foil ? " foil" : "";
+      const spares   = qty >= 2 ? qty - 1 : 0;
+      const qtyBadge = spares > 0 ? `<span class="qty-badge">×${spares}</span>` : "";
       return `<button class="sticker-btn ${stateCls}${foilCls}" data-id="${s.id}" title="${s.description || ""}">
         <span class="s-code">${s.code}</span>
         <span class="s-desc">${s.description || ""}</span>
@@ -228,25 +236,25 @@ function renderGroup(name, code, meta, stickers) {
 function updateStickerBtn(id) {
   const btn = document.querySelector(`.sticker-btn[data-id="${id}"]`);
   if (!btn) return;
-  const inHave = haveQtyMap.has(id);
+  const qty    = haveQtyMap.get(id) || 0;
   const inWant = wantSet.has(id);
-  const qty = haveQtyMap.get(id) || 0;
 
   // Update state classes
   btn.className = btn.className
-    .replace(/\bhave\b|\bwant\b|\bboth\b/g, "").trim();
-  const stateCls = stickerStateCls(inHave, inWant).trim();
+    .replace(/\bhave\b|\bwant\b|\bboth\b|\bcollected\b|\bduplicate\b/g, "").trim();
+  const stateCls = stickerStateCls(qty, inWant).trim();
   if (stateCls) btn.classList.add(...stateCls.split(" ").filter(Boolean));
 
-  // Update qty badge
+  // Badge shows number of SPARES (qty − 1), not total
+  const spares = qty >= 2 ? qty - 1 : 0;
   let badge = btn.querySelector(".qty-badge");
-  if (qty > 1) {
+  if (spares > 0) {
     if (!badge) {
       badge = document.createElement("span");
       badge.className = "qty-badge";
       btn.appendChild(badge);
     }
-    badge.textContent = `×${qty}`;
+    badge.textContent = `×${spares}`;
   } else if (badge) {
     badge.remove();
   }
@@ -261,9 +269,14 @@ async function toggleSticker(id, btnEl) {
       showQtyPopover(id, btnEl);
       return;
     }
-    // First tap: add with qty=1
+    // First tap: mark as collected (in album, qty=1)
     haveQtyMap.set(id, 1);
     pendingHaveAdd.push(id);
+    // Auto-remove from want list — if you just got it, you no longer need it
+    if (wantSet.has(id)) {
+      wantSet.delete(id);
+      pendingWantRem.push(id);
+    }
   } else {
     // Want tab: simple toggle
     if (wantSet.has(id)) {
@@ -285,10 +298,14 @@ async function toggleSticker(id, btnEl) {
 function showQtyPopover(id, btnEl) {
   closePopover();
 
-  const qty = haveQtyMap.get(id) || 1;
-  const pop = document.createElement("div");
+  const qty    = haveQtyMap.get(id) || 1;
+  const spares = Math.max(0, qty - 1);
+  const pop    = document.createElement("div");
   pop.className = "qty-popover";
   pop.innerHTML = `
+    <div style="font-size:.7rem;color:var(--muted);text-align:center;margin-bottom:4px;width:100%">
+      ${spares === 0 ? "Im Album – noch kein Doppelter" : `${spares} Doppelter`}
+    </div>
     <button class="qty-pop-btn" data-action="minus">−</button>
     <span class="qty-pop-val">${qty}</span>
     <button class="qty-pop-btn" data-action="plus">+</button>
@@ -318,11 +335,26 @@ function showQtyPopover(id, btnEl) {
   pop.style.top  = `${top}px`;
   pop.style.left = `${left}px`;
 
-  const valEl = pop.querySelector(".qty-pop-val");
+  const valEl    = pop.querySelector(".qty-pop-val");
+  const minusBtn = pop.querySelector("[data-action=minus]");
+  const infoEl   = pop.querySelector("div");
 
-  pop.querySelector("[data-action=minus]").addEventListener("click", async (e) => {
+  function syncPopover(currentQty) {
+    const s = Math.max(0, currentQty - 1);
+    infoEl.textContent = s === 0 ? "Im Album – noch kein Doppelter" : `${s} Doppelter`;
+    if (currentQty === 1) {
+      minusBtn.textContent = "🗑";
+      minusBtn.classList.add("qty-pop-remove");
+    } else {
+      minusBtn.textContent = "−";
+      minusBtn.classList.remove("qty-pop-remove");
+    }
+  }
+  syncPopover(qty);
+
+  minusBtn.addEventListener("click", async (e) => {
     e.stopPropagation();
-    const cur = haveQtyMap.get(id) || 1;
+    const cur  = haveQtyMap.get(id) || 1;
     const next = cur - 1;
     if (next <= 0) {
       haveQtyMap.delete(id);
@@ -330,6 +362,7 @@ function showQtyPopover(id, btnEl) {
     } else {
       haveQtyMap.set(id, next);
       valEl.textContent = next;
+      syncPopover(next);
     }
     updateStickerBtn(id);
     renderStats();
@@ -338,10 +371,11 @@ function showQtyPopover(id, btnEl) {
 
   pop.querySelector("[data-action=plus]").addEventListener("click", async (e) => {
     e.stopPropagation();
-    const cur = haveQtyMap.get(id) || 1;
+    const cur  = haveQtyMap.get(id) || 1;
     const next = cur + 1;
     haveQtyMap.set(id, next);
     valEl.textContent = next;
+    syncPopover(next);
     updateStickerBtn(id);
     renderStats();
     try { await api.setHaveQty(id, next); } catch (e) { console.error(e); }
