@@ -1,24 +1,15 @@
 import { api } from "./api.js";
 
-// Positionen werden komplett per CSS (album-pos-N Klassen) gesteuert
-
-let allStickers = [];
-let haveQtyMap = new Map(); // sticker_id → quantity
-let wantSet = new Set();
-let currentTab = "have"; // "have" | "want"
-let pendingHaveAdd = [], pendingHaveRem = [], pendingWantAdd = [], pendingWantRem = [];
-let saveTimer = null;
+let allStickers  = [];
+let haveQtyMap   = new Map(); // sticker_id → quantity (1 = im Album, ≥2 = hat Doppelte)
+let pendingHaveAdd = [], pendingHaveRem = [];
+let saveTimer    = null;
 let activePopover = null;
 
 export async function renderStickers(container) {
   container.innerHTML = `
     <div class="page-title">Meine Sticker</div>
     <div id="album-stats"></div>
-    <div class="tabs">
-      <button id="tab-have" class="active" onclick="window._switchTab('have')">📚 Sammlung</button>
-      <button id="tab-want" onclick="window._switchTab('want')">🔍 Fehlende</button>
-    </div>
-    <div id="mode-banner"></div>
     <div class="search-bar">
       <input id="sticker-search" type="search" placeholder="Suche: GER 1, Torwart, ..." />
     </div>
@@ -32,29 +23,18 @@ export async function renderStickers(container) {
     ">Gespeichert ✓</div>
   `;
 
-  window._switchTab = (tab) => {
-    currentTab = tab;
-    closePopover();
-    document.getElementById("tab-have").classList.toggle("active", tab === "have");
-    document.getElementById("tab-want").classList.toggle("active", tab === "want");
-    updateModeBanner();
-    renderList(document.getElementById("sticker-search").value);
-  };
-
   document.getElementById("sticker-search").addEventListener("input", e => {
     closePopover();
     renderList(e.target.value);
   });
 
   try {
-    const [stickers, haveItems, wantIds] = await Promise.all([
+    const [stickers, haveItems] = await Promise.all([
       api.stickers(),
       api.myHave(),
-      api.myWant(),
     ]);
     allStickers = stickers;
-    haveQtyMap = new Map(haveItems.map(h => [h.sticker_id, h.quantity]));
-    wantSet = new Set(wantIds);
+    haveQtyMap  = new Map(haveItems.map(h => [h.sticker_id, h.quantity]));
   } catch (e) {
     document.getElementById("sticker-list").innerHTML =
       `<div class="alert alert-error">${e.message}</div>`;
@@ -62,42 +42,26 @@ export async function renderStickers(container) {
   }
 
   renderStats();
-  updateModeBanner();
   renderList("");
 }
 
-function stickerStateCls(qty, inWant) {
-  if (qty >= 1 && inWant) return "both";      // in album but also on want list (edge case)
-  if (qty >= 2)           return "duplicate"; // in album + spares to trade
-  if (qty === 1)          return "collected"; // in album, no spares
-  if (inWant)             return "want";      // missing, looking for it
-  return "";                                  // not tracked
+// ── State helpers ─────────────────────────────────────────────────────────────
+
+function stickerStateCls(qty) {
+  if (qty >= 2) return "duplicate"; // im Album + Doppelte zum Tauschen
+  if (qty === 1) return "collected"; // im Album, kein Doppelter
+  return "";                         // fehlt noch
 }
 
-function updateModeBanner() {
-  const el = document.getElementById("mode-banner");
-  if (!el) return;
-  const isHave = currentTab === "have";
-  el.className = "mode-banner " + (isHave ? "mode-have" : "mode-want");
-  const legend = `<span class="mode-legend">
-    <span class="mode-dot collected"></span>Im Album &nbsp;
-    <span class="mode-dot duplicate"></span>Doppelt &nbsp;
-    <span class="mode-dot want"></span>Fehlend
-  </span>`;
-  el.innerHTML = isHave
-    ? `<span class="mode-dot collected"></span>
-       1× Tippen = <strong>Im Album</strong> · Nochmals = Anzahl verwalten ${legend}`
-    : `<span class="mode-dot want"></span>
-       Tippen markiert als <strong>Fehlend</strong> ${legend}`;
-}
+// ── Stats ─────────────────────────────────────────────────────────────────────
 
 function renderStats() {
   const el = document.getElementById("album-stats");
   if (!el || !allStickers.length) return;
   const total      = allStickers.length;
-  const collected  = haveQtyMap.size;  // qty ≥ 1 = in album
-  const duplicates = [...haveQtyMap.values()].filter(q => q >= 2).length; // qty ≥ 2 = has spares
-  const missing    = wantSet.size;
+  const collected  = haveQtyMap.size;
+  const duplicates = [...haveQtyMap.values()].filter(q => q >= 2).length;
+  const fehlend    = total - collected;
   const pct        = Math.round(collected / total * 100);
   el.innerHTML = `
     <div class="album-stats">
@@ -108,10 +72,12 @@ function renderStats() {
       <div class="stats-badges">
         <span class="stats-badge collected">${collected} Im Album</span>
         <span class="stats-badge duplicates">${duplicates} Doppelte</span>
-        <span class="stats-badge missing" onclick="window._switchTab('want')" style="cursor:pointer">${missing} Fehlend</span>
+        <span class="stats-badge missing">${fehlend} Fehlend</span>
       </div>
     </div>`;
 }
+
+// ── List rendering ────────────────────────────────────────────────────────────
 
 function renderList(query) {
   const container = document.getElementById("sticker-list");
@@ -121,12 +87,11 @@ function renderList(query) {
   const filtered = allStickers.filter(s => {
     if (!q) return true;
     return s.code.toLowerCase().includes(q) ||
-           (s.country_name || "").toLowerCase().includes(q) ||
-           (s.description || "").toLowerCase().includes(q);
+           (s.country_name  || "").toLowerCase().includes(q) ||
+           (s.description   || "").toLowerCase().includes(q);
   });
 
-  // Group by country
-  const groups = {};
+  const groups      = {};
   const specialGroup = [];
   for (const s of filtered) {
     if (s.category === "special") {
@@ -139,33 +104,24 @@ function renderList(query) {
   }
 
   let html = "";
-
-  if (specialGroup.length) {
-    html += renderGroup("Spezial-Sticker", "Spezial", "", specialGroup);
+  if (specialGroup.length) html += renderGroup("Spezial-Sticker", "Spezial", "", specialGroup);
+  for (const [, g] of Object.entries(groups)) {
+    html += renderGroup(`${g.name}`, g.stickers[0]?.country_code || "", `Gruppe ${g.group}`, g.stickers);
   }
-
-  for (const [code, g] of Object.entries(groups)) {
-    html += renderGroup(`${g.name} (${code})`, code, `Gruppe ${g.group}`, g.stickers);
-  }
-
-  if (!html) {
-    html = `<div class="empty-state"><div class="empty-icon">🔍</div>Keine Sticker gefunden</div>`;
-  }
+  if (!html) html = `<div class="empty-state"><div class="empty-icon">🔍</div>Keine Sticker gefunden</div>`;
 
   container.innerHTML = html;
 
-  // Bind click events
   container.querySelectorAll(".sticker-btn").forEach(btn => {
-    btn.addEventListener("click", (e) => {
+    btn.addEventListener("click", e => {
       e.stopPropagation();
       toggleSticker(parseInt(btn.dataset.id), btn);
     });
   });
 
-  // Expand groups with marked stickers by default
   container.querySelectorAll(".country-header").forEach(header => {
     const grid = header.nextElementSibling;
-    const hasMarked = grid.querySelector(".sticker-btn.have, .sticker-btn.want");
+    const hasMarked = grid.querySelector(".sticker-btn.collected, .sticker-btn.duplicate");
     if (hasMarked || q) {
       header.classList.add("open");
       grid.classList.remove("hidden");
@@ -180,51 +136,40 @@ function renderList(query) {
 }
 
 function renderGroup(name, code, meta, stickers) {
-  const marked = stickers.filter(s => haveQtyMap.has(s.id) || wantSet.has(s.id)).length;
+  const marked = stickers.filter(s => haveQtyMap.has(s.id)).length;
   const isTeam = stickers.length > 0 && stickers[0].category === "team";
+
+  const makeBtn = (s, extraCls = "") => {
+    const qty      = haveQtyMap.get(s.id) || 0;
+    const stateCls = stickerStateCls(qty);
+    const foilCls  = s.is_foil ? " foil" : "";
+    const spares   = qty >= 2 ? qty - 1 : 0;
+    const badge    = spares > 0 ? `<span class="qty-badge">×${spares}</span>` : "";
+    return `<button class="sticker-btn ${extraCls}${stateCls}${foilCls}"
+      data-id="${s.id}" title="${s.description || ""}">
+      <span class="s-code">${s.code}</span>
+      <span class="s-desc">${s.description || ""}</span>
+      ${badge}
+    </button>`;
+  };
 
   let btns = "";
   if (isTeam) {
-    btns = stickers.map(s => {
-      const qty      = haveQtyMap.get(s.id) || 0;
-      const inWant   = wantSet.has(s.id);
-      const stateCls = stickerStateCls(qty, inWant);
-      const foilCls  = s.is_foil ? " foil" : "";
-      const spares   = qty >= 2 ? qty - 1 : 0;
-      const qtyBadge = spares > 0 ? `<span class="qty-badge">×${spares}</span>` : "";
-      return `<button class="sticker-btn album-btn album-pos-${s.number} ${stateCls}${foilCls}"
-        data-id="${s.id}"
-        title="${s.description || ""}">
-        <span class="s-code">${s.code}</span>
-        <span class="s-desc">${s.description || ""}</span>
-        ${qtyBadge}
-      </button>`;
-    }).join("") +
-    `<div class="album-page-sep"></div>`;
+    btns = stickers.map(s => makeBtn(s, `album-btn album-pos-${s.number} `)).join("")
+         + `<div class="album-page-sep"></div>`;
   } else {
-    btns = stickers.map(s => {
-      const qty      = haveQtyMap.get(s.id) || 0;
-      const inWant   = wantSet.has(s.id);
-      const stateCls = stickerStateCls(qty, inWant);
-      const foilCls  = s.is_foil ? " foil" : "";
-      const spares   = qty >= 2 ? qty - 1 : 0;
-      const qtyBadge = spares > 0 ? `<span class="qty-badge">×${spares}</span>` : "";
-      return `<button class="sticker-btn ${stateCls}${foilCls}" data-id="${s.id}" title="${s.description || ""}">
-        <span class="s-code">${s.code}</span>
-        <span class="s-desc">${s.description || ""}</span>
-        ${qtyBadge}
-      </button>`;
-    }).join("");
+    btns = stickers.map(s => makeBtn(s)).join("");
   }
 
   const gridClass = isTeam ? "sticker-grid sticker-grid-album hidden" : "sticker-grid hidden";
+  const countLabel = marked > 0 ? `✓ ${marked}` : "";
 
   return `
     <div class="country-group">
       <div class="country-header">
-        <span class="country-name">${name}</span>
+        <span class="country-name">${name}${code ? ` (${code})` : ""}</span>
         <span class="country-meta">
-          <span>${marked > 0 ? `✓ ${marked}` : ""}</span>
+          <span>${countLabel}</span>
           <span>${meta}</span>
           <span class="chevron">▾</span>
         </span>
@@ -233,79 +178,53 @@ function renderGroup(name, code, meta, stickers) {
     </div>`;
 }
 
+// ── Button update ─────────────────────────────────────────────────────────────
+
 function updateStickerBtn(id) {
   const btn = document.querySelector(`.sticker-btn[data-id="${id}"]`);
   if (!btn) return;
-  const qty    = haveQtyMap.get(id) || 0;
-  const inWant = wantSet.has(id);
+  const qty = haveQtyMap.get(id) || 0;
 
-  // Update state classes
   btn.className = btn.className
-    .replace(/\bhave\b|\bwant\b|\bboth\b|\bcollected\b|\bduplicate\b/g, "").trim();
-  const stateCls = stickerStateCls(qty, inWant).trim();
-  if (stateCls) btn.classList.add(...stateCls.split(" ").filter(Boolean));
+    .replace(/\bcollected\b|\bduplicate\b|\bwant\b|\bboth\b|\bhave\b/g, "").trim();
+  const stateCls = stickerStateCls(qty);
+  if (stateCls) btn.classList.add(stateCls);
 
-  // Badge shows number of SPARES (qty − 1), not total
   const spares = qty >= 2 ? qty - 1 : 0;
   let badge = btn.querySelector(".qty-badge");
   if (spares > 0) {
-    if (!badge) {
-      badge = document.createElement("span");
-      badge.className = "qty-badge";
-      btn.appendChild(badge);
-    }
+    if (!badge) { badge = document.createElement("span"); badge.className = "qty-badge"; btn.appendChild(badge); }
     badge.textContent = `×${spares}`;
   } else if (badge) {
     badge.remove();
   }
 }
 
+// ── Toggle ────────────────────────────────────────────────────────────────────
+
 async function toggleSticker(id, btnEl) {
-  const isHave = currentTab === "have";
-
-  if (isHave) {
-    if (haveQtyMap.has(id)) {
-      // Already marked — show qty popover instead of toggling
-      showQtyPopover(id, btnEl);
-      return;
-    }
-    // First tap: mark as collected (in album, qty=1)
-    haveQtyMap.set(id, 1);
-    pendingHaveAdd.push(id);
-    // Auto-remove from want list — if you just got it, you no longer need it
-    if (wantSet.has(id)) {
-      wantSet.delete(id);
-      pendingWantRem.push(id);
-    }
-  } else {
-    // Want tab: simple toggle
-    if (wantSet.has(id)) {
-      wantSet.delete(id);
-      pendingWantRem.push(id);
-    } else {
-      wantSet.add(id);
-      pendingWantAdd.push(id);
-    }
+  if (haveQtyMap.has(id)) {
+    showQtyPopover(id, btnEl);
+    return;
   }
-
+  // First tap: im Album markieren (qty = 1)
+  haveQtyMap.set(id, 1);
+  pendingHaveAdd.push(id);
   updateStickerBtn(id);
   renderStats();
   scheduleSave();
 }
 
-// ── Qty popover ────────────────────────────────────────────────────────────
+// ── Qty popover ───────────────────────────────────────────────────────────────
 
 function showQtyPopover(id, btnEl) {
   closePopover();
 
-  const qty    = haveQtyMap.get(id) || 1;
-  const spares = Math.max(0, qty - 1);
-  const pop    = document.createElement("div");
+  const qty  = haveQtyMap.get(id) || 1;
+  const pop  = document.createElement("div");
   pop.className = "qty-popover";
   pop.innerHTML = `
-    <div style="font-size:.7rem;color:var(--muted);text-align:center;margin-bottom:4px;width:100%">
-      ${spares === 0 ? "Im Album – noch kein Doppelter" : `${spares} Doppelter`}
-    </div>
+    <div class="qty-pop-info">${qty <= 1 ? "Im Album – noch kein Doppelter" : `${qty - 1} Doppelter`}</div>
     <button class="qty-pop-btn" data-action="minus">−</button>
     <span class="qty-pop-val">${qty}</span>
     <button class="qty-pop-btn" data-action="plus">+</button>
@@ -315,20 +234,16 @@ function showQtyPopover(id, btnEl) {
   document.body.appendChild(pop);
   activePopover = pop;
 
-  // Position: fixed to viewport. Prefer below the button, fall back to above.
+  // Position: prefer below, fall back to above
   const rect = btnEl.getBoundingClientRect();
   const popH = pop.offsetHeight || 54;
-  const popW = pop.offsetWidth  || 170;
+  const popW = pop.offsetWidth  || 190;
   const gap  = 8;
-  const NAV  = 72; // bottom nav height
+  const NAV  = 72;
 
-  let top;
-  if (rect.bottom + gap + popH < window.innerHeight - NAV) {
-    top = rect.bottom + gap;               // fits below
-  } else {
-    top = Math.max(64, rect.top - popH - gap); // above button (min: below header)
-  }
-
+  let top = (rect.bottom + gap + popH < window.innerHeight - NAV)
+    ? rect.bottom + gap
+    : Math.max(64, rect.top - popH - gap);
   let left = rect.left + rect.width / 2 - popW / 2;
   left = Math.max(8, Math.min(left, window.innerWidth - popW - 8));
 
@@ -336,97 +251,69 @@ function showQtyPopover(id, btnEl) {
   pop.style.left = `${left}px`;
 
   const valEl    = pop.querySelector(".qty-pop-val");
+  const infoEl   = pop.querySelector(".qty-pop-info");
   const minusBtn = pop.querySelector("[data-action=minus]");
-  const infoEl   = pop.querySelector("div");
 
-  function syncPopover(currentQty) {
-    const s = Math.max(0, currentQty - 1);
-    infoEl.textContent = s === 0 ? "Im Album – noch kein Doppelter" : `${s} Doppelter`;
-    if (currentQty === 1) {
-      minusBtn.textContent = "🗑";
-      minusBtn.classList.add("qty-pop-remove");
-    } else {
-      minusBtn.textContent = "−";
-      minusBtn.classList.remove("qty-pop-remove");
-    }
+  function sync(q) {
+    infoEl.textContent = q <= 1 ? "Im Album – noch kein Doppelter" : `${q - 1} Doppelter`;
+    if (q === 1) { minusBtn.textContent = "🗑"; minusBtn.classList.add("qty-pop-remove"); }
+    else         { minusBtn.textContent = "−";  minusBtn.classList.remove("qty-pop-remove"); }
   }
-  syncPopover(qty);
+  sync(qty);
 
-  minusBtn.addEventListener("click", async (e) => {
+  minusBtn.addEventListener("click", async e => {
     e.stopPropagation();
     const cur  = haveQtyMap.get(id) || 1;
     const next = cur - 1;
-    if (next <= 0) {
-      haveQtyMap.delete(id);
-      closePopover();
-    } else {
-      haveQtyMap.set(id, next);
-      valEl.textContent = next;
-      syncPopover(next);
-    }
+    if (next <= 0) { haveQtyMap.delete(id); closePopover(); }
+    else           { haveQtyMap.set(id, next); valEl.textContent = next; sync(next); }
+    pendingHaveRem.push(id);
     updateStickerBtn(id);
     renderStats();
-    try { await api.setHaveQty(id, next); } catch (e) { console.error(e); }
+    try { await api.setHaveQty(id, next); } catch (err) { console.error(err); }
   });
 
-  pop.querySelector("[data-action=plus]").addEventListener("click", async (e) => {
+  pop.querySelector("[data-action=plus]").addEventListener("click", async e => {
     e.stopPropagation();
     const cur  = haveQtyMap.get(id) || 1;
     const next = cur + 1;
     haveQtyMap.set(id, next);
     valEl.textContent = next;
-    syncPopover(next);
+    sync(next);
     updateStickerBtn(id);
     renderStats();
-    try { await api.setHaveQty(id, next); } catch (e) { console.error(e); }
+    try { await api.setHaveQty(id, next); } catch (err) { console.error(err); }
   });
 
-  pop.querySelector(".qty-pop-close").addEventListener("click", (e) => {
+  pop.querySelector(".qty-pop-close").addEventListener("click", e => {
     e.stopPropagation();
     closePopover();
   });
 
-  // Close when clicking outside
-  setTimeout(() => {
-    document.addEventListener("click", _outsideClick);
-  }, 0);
+  setTimeout(() => document.addEventListener("click", _outsideClick), 0);
 }
 
 function _outsideClick(e) {
-  if (activePopover && !activePopover.contains(e.target)) {
-    closePopover();
-  }
+  if (activePopover && !activePopover.contains(e.target)) closePopover();
 }
 
 function closePopover() {
-  if (activePopover) {
-    activePopover.remove();
-    activePopover = null;
-  }
+  if (activePopover) { activePopover.remove(); activePopover = null; }
   document.removeEventListener("click", _outsideClick);
 }
 
-// ── Debounced bulk save ────────────────────────────────────────────────────
+// ── Debounced save ────────────────────────────────────────────────────────────
 
 function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     try {
-      const promises = [];
       if (pendingHaveAdd.length || pendingHaveRem.length) {
-        promises.push(api.bulkHave([...new Set(pendingHaveAdd)], [...new Set(pendingHaveRem)]));
+        await api.bulkHave([...new Set(pendingHaveAdd)], [...new Set(pendingHaveRem)]);
         pendingHaveAdd = []; pendingHaveRem = [];
       }
-      if (pendingWantAdd.length || pendingWantRem.length) {
-        promises.push(api.bulkWant([...new Set(pendingWantAdd)], [...new Set(pendingWantRem)]));
-        pendingWantAdd = []; pendingWantRem = [];
-      }
-      await Promise.all(promises);
       const ind = document.getElementById("save-indicator");
-      if (ind) {
-        ind.style.display = "block";
-        setTimeout(() => { ind.style.display = "none"; }, 1500);
-      }
+      if (ind) { ind.style.display = "block"; setTimeout(() => { ind.style.display = "none"; }, 1500); }
     } catch (e) {
       console.error("Save failed:", e);
     }

@@ -274,47 +274,6 @@ main { padding: 16px; max-width: 700px; margin: 0 auto; }
   border-color: var(--perfect);  /* bold green – has spares to trade */
   background: #dcfce7;
 }
-.sticker-btn.want {
-  border-color: var(--sided);
-  background: #dbeafe;
-}
-.sticker-btn.both {
-  border-color: var(--chain);
-  background: #fff7ed;
-}
-
-/* ── MODE BANNER ── */
-.mode-banner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: .82rem;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-}
-.mode-banner.mode-have { background: #dcfce7; color: #15803d; border: 1.5px solid var(--perfect); }
-.mode-banner.mode-want { background: #dbeafe; color: #1d4ed8; border: 1.5px solid var(--sided); }
-.mode-dot {
-  display: inline-block;
-  width: 11px; height: 11px;
-  border-radius: 2px;
-  border: 2px solid;
-  flex-shrink: 0;
-}
-.mode-dot.collected  { border-color: #86efac;          background: #f0fdf4; }
-.mode-dot.duplicate  { border-color: var(--perfect);   background: #dcfce7; }
-.mode-dot.want       { border-color: var(--sided);     background: #dbeafe; }
-.mode-dot.both       { border-color: var(--chain);     background: #fff7ed; }
-.mode-legend {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: .75rem;
-  opacity: .75;
-}
 
 /* ── TRADE CARDS ── */
 .trade-card {
@@ -739,7 +698,6 @@ main { padding: 16px; max-width: 700px; margin: 0 auto; }
   pointer-events: none;
 }
 .sticker-btn.duplicate .qty-badge { background: var(--perfect); }
-.sticker-btn.both .qty-badge      { background: var(--chain); }
 
 /* ── QTY POPOVER ── */
 .qty-popover {
