@@ -54,8 +54,8 @@ async def log_access(request: Request, db: Session = Depends(get_db)):
     """
     ip = _get_ip(request)
 
-    # Skip if this IP was already logged as ACCESS within the last 2 hours
-    cutoff = datetime.utcnow() - timedelta(hours=2)
+    # Skip if this IP was already logged as ACCESS within the last 15 minutes
+    cutoff = datetime.utcnow() - timedelta(minutes=15)
     already_logged = db.query(models.SecurityEvent).filter(
         models.SecurityEvent.event == "ACCESS",
         models.SecurityEvent.ip == ip,
