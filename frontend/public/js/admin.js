@@ -107,7 +107,7 @@ function bindAdmin(users) {
       delete:  "Löschen? Alle Sticker-Daten werden entfernt.",
       makeAdmin: "Als Admin festlegen?",
     };
-    if (!confirm(labels[action] || "Fortfahren?")) return;
+    if (!await window.appConfirm(labels[action] || "Fortfahren?")) return;
     try {
       if (action === "approve")   await api.approveUser(id);
       if (action === "revoke")    await api.revokeUser(id);
@@ -170,7 +170,7 @@ function bindAdmin(users) {
   };
 
   window._deleteSticker = async (id, code) => {
-    if (!confirm(`Sticker ${code} löschen?`)) return;
+    if (!await window.appConfirm(`Sticker ${code} löschen?`)) return;
     try {
       await api.deleteSticker(id);
       await window._loadAdminStickers();

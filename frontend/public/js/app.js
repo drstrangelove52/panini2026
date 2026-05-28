@@ -91,11 +91,30 @@ document.querySelectorAll(".nav-btn").forEach(b => {
   b.addEventListener("click", () => navigateTo(b.dataset.page));
 });
 
-document.getElementById("btn-logout").addEventListener("click", () => {
-  if (confirm("Abmelden?")) {
+document.getElementById("btn-logout").addEventListener("click", async () => {
+  if (await appConfirm("Abmelden?")) {
     clearAuth();
     showAuth();
   }
 });
 
 boot();
+
+// Custom confirm dialog – works on iOS PWA (native confirm() is blocked there)
+window.appConfirm = function(msg) {
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.className = "confirm-overlay";
+    overlay.innerHTML = `
+      <div class="confirm-box">
+        <p class="confirm-msg">${msg}</p>
+        <div class="confirm-btns">
+          <button class="btn btn-outline conf-no">Abbrechen</button>
+          <button class="btn btn-danger conf-yes">OK</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector(".conf-no").onclick  = () => { overlay.remove(); resolve(false); };
+    overlay.querySelector(".conf-yes").onclick = () => { overlay.remove(); resolve(true);  };
+  });
+};
