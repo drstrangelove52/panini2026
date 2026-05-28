@@ -10,6 +10,10 @@ def _to_schema(s: models.Sticker) -> TradeSticker:
 
 
 
+def _get_ids(user_id: int, table, db: Session) -> Set[int]:
+    return {row.sticker_id for row in db.query(table).filter(table.user_id == user_id).all()}
+
+
 def _get_tradeable_ids(user_id: int, db: Session) -> Set[int]:
     """Sticker IDs where user owns qty ≥ 2 (in-album copy + at least one spare)."""
     return {
@@ -31,17 +35,8 @@ def find_trades(current_user_id: int, db: Session, max_chain: int = 4) -> List[T
     if not other_users:
         return []
 
-    # All sticker IDs in the album
-    all_sticker_ids: Set[int] = {row[0] for row in db.query(models.Sticker.id).all()}
-
-    def _want_from_have(uid: int) -> Set[int]:
-        """Want = every sticker the user doesn't own yet (qty = 0 means missing)."""
-        owned = {row.sticker_id for row in
-                 db.query(models.UserHave).filter(models.UserHave.user_id == uid).all()}
-        return all_sticker_ids - owned
-
     my_have = _get_tradeable_ids(current_user_id, db)  # qty ≥ 2 → has spare
-    my_want = _want_from_have(current_user_id)
+    my_want = _get_ids(current_user_id, models.UserWant, db)
 
     if not my_have and not my_want:
         return []
@@ -53,8 +48,8 @@ def find_trades(current_user_id: int, db: Session, max_chain: int = 4) -> List[T
     have: Dict[int, Set[int]] = {current_user_id: my_have}
     want: Dict[int, Set[int]] = {current_user_id: my_want}
     for u in other_users:
-        have[u.id] = _get_tradeable_ids(u.id, db)   # only offer spares
-        want[u.id] = _want_from_have(u.id)
+        have[u.id] = _get_tradeable_ids(u.id, db)  # only offer spares
+        want[u.id] = _get_ids(u.id, models.UserWant, db)
 
     # can_give[(a,b)] = sticker IDs a has that b wants
     can_give: Dict[Tuple[int, int], Set[int]] = {}

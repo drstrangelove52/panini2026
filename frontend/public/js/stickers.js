@@ -1,15 +1,22 @@
 import { api } from "./api.js";
 
-let allStickers  = [];
-let haveQtyMap   = new Map(); // sticker_id → quantity (1 = im Album, ≥2 = hat Doppelte)
+let allStickers    = [];
+let haveQtyMap     = new Map(); // sticker_id → quantity (1=im Album, ≥2=hat Doppelte)
+let wantSet        = new Set(); // sticker_id → explizit gesucht
+let currentTab     = "have";   // "have" | "want"
 let pendingHaveAdd = [], pendingHaveRem = [];
-let saveTimer    = null;
-let activePopover = null;
+let pendingWantAdd = [], pendingWantRem = [];
+let saveTimer      = null;
+let activePopover  = null;
 
 export async function renderStickers(container) {
   container.innerHTML = `
     <div class="page-title">Meine Sticker</div>
     <div id="album-stats"></div>
+    <div class="sticker-tabs">
+      <button class="sticker-tab active" data-tab="have">📦 Sammlung</button>
+      <button class="sticker-tab" data-tab="want">🔍 Wunschliste</button>
+    </div>
     <div class="search-bar">
       <input id="sticker-search" type="search" placeholder="Suche: GER 1, Torwart, ..." />
     </div>
@@ -23,18 +30,31 @@ export async function renderStickers(container) {
     ">Gespeichert ✓</div>
   `;
 
-  document.getElementById("sticker-search").addEventListener("input", e => {
+  const searchEl = document.getElementById("sticker-search");
+  searchEl.addEventListener("input", e => {
     closePopover();
     renderList(e.target.value);
   });
 
+  container.querySelectorAll(".sticker-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      currentTab = tab.dataset.tab;
+      container.querySelectorAll(".sticker-tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      closePopover();
+      renderList(searchEl.value);
+    });
+  });
+
   try {
-    const [stickers, haveItems] = await Promise.all([
+    const [stickers, haveItems, wantIds] = await Promise.all([
       api.stickers(),
       api.myHave(),
+      api.myWant(),
     ]);
     allStickers = stickers;
     haveQtyMap  = new Map(haveItems.map(h => [h.sticker_id, h.quantity]));
+    wantSet     = new Set(wantIds);
   } catch (e) {
     document.getElementById("sticker-list").innerHTML =
       `<div class="alert alert-error">${e.message}</div>`;
@@ -45,15 +65,7 @@ export async function renderStickers(container) {
   renderList("");
 }
 
-// ── State helpers ─────────────────────────────────────────────────────────────
-
-function stickerStateCls(qty) {
-  if (qty >= 2) return "duplicate"; // im Album + Doppelte zum Tauschen
-  if (qty === 1) return "collected"; // im Album, kein Doppelter
-  return "";                         // fehlt noch
-}
-
-// ── Stats ─────────────────────────────────────────────────────────────────────
+// ── Stats ──────────────────────────────────────────────────────────────────────
 
 function renderStats() {
   const el = document.getElementById("album-stats");
@@ -77,21 +89,36 @@ function renderStats() {
     </div>`;
 }
 
-// ── List rendering ────────────────────────────────────────────────────────────
+// ── State helper ───────────────────────────────────────────────────────────────
+
+function stickerStateCls(id) {
+  const qty = haveQtyMap.get(id) || 0;
+  if (qty >= 2) return "duplicate";
+  if (qty === 1) return "collected";
+  if (wantSet.has(id)) return "want";
+  return "";
+}
+
+// ── List rendering ─────────────────────────────────────────────────────────────
 
 function renderList(query) {
   const container = document.getElementById("sticker-list");
   if (!container) return;
 
   const q = query.toLowerCase().trim();
-  const filtered = allStickers.filter(s => {
+  let filtered = allStickers.filter(s => {
     if (!q) return true;
     return s.code.toLowerCase().includes(q) ||
            (s.country_name  || "").toLowerCase().includes(q) ||
            (s.description   || "").toLowerCase().includes(q);
   });
 
-  const groups      = {};
+  // Wunschliste zeigt nur fehlende Sticker (die man noch nicht hat)
+  if (currentTab === "want") {
+    filtered = filtered.filter(s => !haveQtyMap.has(s.id));
+  }
+
+  const groups       = {};
   const specialGroup = [];
   for (const s of filtered) {
     if (s.category === "special") {
@@ -106,22 +133,32 @@ function renderList(query) {
   let html = "";
   if (specialGroup.length) html += renderGroup("Spezial-Sticker", "Spezial", "", specialGroup);
   for (const [, g] of Object.entries(groups)) {
-    html += renderGroup(`${g.name}`, g.stickers[0]?.country_code || "", `Gruppe ${g.group}`, g.stickers);
+    html += renderGroup(g.name, g.stickers[0]?.country_code || "", `Gruppe ${g.group}`, g.stickers);
   }
-  if (!html) html = `<div class="empty-state"><div class="empty-icon">🔍</div>Keine Sticker gefunden</div>`;
+
+  if (!html) {
+    const msg = currentTab === "want"
+      ? `<div class="empty-icon">🎉</div>Alle fehlenden Sticker gefunden – oder Sammlung noch leer!`
+      : `<div class="empty-icon">🔍</div>Keine Sticker gefunden`;
+    html = `<div class="empty-state">${msg}</div>`;
+  }
 
   container.innerHTML = html;
 
   container.querySelectorAll(".sticker-btn").forEach(btn => {
     btn.addEventListener("click", e => {
       e.stopPropagation();
-      toggleSticker(parseInt(btn.dataset.id), btn);
+      const id = parseInt(btn.dataset.id);
+      if (currentTab === "want") toggleWant(id, btn);
+      else                       toggleHave(id, btn);
     });
   });
 
   container.querySelectorAll(".country-header").forEach(header => {
     const grid = header.nextElementSibling;
-    const hasMarked = grid.querySelector(".sticker-btn.collected, .sticker-btn.duplicate");
+    const hasMarked = currentTab === "want"
+      ? grid.querySelector(".sticker-btn.want")
+      : grid.querySelector(".sticker-btn.collected, .sticker-btn.duplicate");
     if (hasMarked || q) {
       header.classList.add("open");
       grid.classList.remove("hidden");
@@ -136,15 +173,19 @@ function renderList(query) {
 }
 
 function renderGroup(name, code, meta, stickers) {
-  const marked = stickers.filter(s => haveQtyMap.has(s.id)).length;
   const isTeam = stickers.length > 0 && stickers[0].category === "team";
 
-  const makeBtn = (s, extraCls = "") => {
+  const marked = currentTab === "want"
+    ? stickers.filter(s => wantSet.has(s.id)).length
+    : stickers.filter(s => haveQtyMap.has(s.id)).length;
+
+  const makeBtn = s => {
     const qty      = haveQtyMap.get(s.id) || 0;
-    const stateCls = stickerStateCls(qty);
+    const stateCls = stickerStateCls(s.id);
     const foilCls  = s.is_foil ? " foil" : "";
     const spares   = qty >= 2 ? qty - 1 : 0;
     const badge    = spares > 0 ? `<span class="qty-badge">×${spares}</span>` : "";
+    const extraCls = isTeam ? `album-btn album-pos-${s.number} ` : "";
     return `<button class="sticker-btn ${extraCls}${stateCls}${foilCls}"
       data-id="${s.id}" title="${s.description || ""}">
       <span class="s-code">${s.code}</span>
@@ -153,16 +194,13 @@ function renderGroup(name, code, meta, stickers) {
     </button>`;
   };
 
-  let btns = "";
-  if (isTeam) {
-    btns = stickers.map(s => makeBtn(s, `album-btn album-pos-${s.number} `)).join("")
-         + `<div class="album-page-sep"></div>`;
-  } else {
-    btns = stickers.map(s => makeBtn(s)).join("");
-  }
+  let btns = stickers.map(s => makeBtn(s)).join("");
+  if (isTeam) btns += `<div class="album-page-sep"></div>`;
 
-  const gridClass = isTeam ? "sticker-grid sticker-grid-album hidden" : "sticker-grid hidden";
-  const countLabel = marked > 0 ? `✓ ${marked}` : "";
+  const gridClass    = isTeam ? "sticker-grid sticker-grid-album hidden" : "sticker-grid hidden";
+  const countLabel   = currentTab === "want"
+    ? (marked > 0 ? `🔍 ${marked}` : "")
+    : (marked > 0 ? `✓ ${marked}` : "");
 
   return `
     <div class="country-group">
@@ -178,18 +216,18 @@ function renderGroup(name, code, meta, stickers) {
     </div>`;
 }
 
-// ── Button update ─────────────────────────────────────────────────────────────
+// ── Button update ──────────────────────────────────────────────────────────────
 
 function updateStickerBtn(id) {
   const btn = document.querySelector(`.sticker-btn[data-id="${id}"]`);
   if (!btn) return;
-  const qty = haveQtyMap.get(id) || 0;
 
   btn.className = btn.className
-    .replace(/\bcollected\b|\bduplicate\b|\bwant\b|\bboth\b|\bhave\b/g, "").trim();
-  const stateCls = stickerStateCls(qty);
+    .replace(/\bcollected\b|\bduplicate\b|\bwant\b/g, "").trim();
+  const stateCls = stickerStateCls(id);
   if (stateCls) btn.classList.add(stateCls);
 
+  const qty    = haveQtyMap.get(id) || 0;
   const spares = qty >= 2 ? qty - 1 : 0;
   let badge = btn.querySelector(".qty-badge");
   if (spares > 0) {
@@ -200,22 +238,41 @@ function updateStickerBtn(id) {
   }
 }
 
-// ── Toggle ────────────────────────────────────────────────────────────────────
+// ── Have toggle ────────────────────────────────────────────────────────────────
 
-async function toggleSticker(id, btnEl) {
+async function toggleHave(id, btnEl) {
   if (haveQtyMap.has(id)) {
     showQtyPopover(id, btnEl);
     return;
   }
-  // First tap: im Album markieren (qty = 1)
+  // Ersten Tap: im Album markieren (qty = 1)
   haveQtyMap.set(id, 1);
+  // Falls auf Wunschliste: automatisch entfernen
+  if (wantSet.has(id)) {
+    wantSet.delete(id);
+    pendingWantRem.push(id);
+  }
   pendingHaveAdd.push(id);
   updateStickerBtn(id);
   renderStats();
   scheduleSave();
 }
 
-// ── Qty popover ───────────────────────────────────────────────────────────────
+// ── Want toggle ────────────────────────────────────────────────────────────────
+
+function toggleWant(id) {
+  if (wantSet.has(id)) {
+    wantSet.delete(id);
+    pendingWantRem.push(id);
+  } else {
+    wantSet.add(id);
+    pendingWantAdd.push(id);
+  }
+  updateStickerBtn(id);
+  scheduleSave();
+}
+
+// ── Qty popover ────────────────────────────────────────────────────────────────
 
 function showQtyPopover(id, btnEl) {
   closePopover();
@@ -302,16 +359,26 @@ function closePopover() {
   document.removeEventListener("click", _outsideClick);
 }
 
-// ── Debounced save ────────────────────────────────────────────────────────────
+// ── Debounced save ─────────────────────────────────────────────────────────────
 
 function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     try {
-      if (pendingHaveAdd.length || pendingHaveRem.length) {
-        await api.bulkHave([...new Set(pendingHaveAdd)], [...new Set(pendingHaveRem)]);
+      const haveAdd = [...new Set(pendingHaveAdd)];
+      const haveRem = [...new Set(pendingHaveRem)];
+      const wantAdd = [...new Set(pendingWantAdd)];
+      const wantRem = [...new Set(pendingWantRem)];
+
+      if (haveAdd.length || haveRem.length) {
+        await api.bulkHave(haveAdd, haveRem);
         pendingHaveAdd = []; pendingHaveRem = [];
       }
+      if (wantAdd.length || wantRem.length) {
+        await api.bulkWant(wantAdd, wantRem);
+        pendingWantAdd = []; pendingWantRem = [];
+      }
+
       const ind = document.getElementById("save-indicator");
       if (ind) { ind.style.display = "block"; setTimeout(() => { ind.style.display = "none"; }, 1500); }
     } catch (e) {

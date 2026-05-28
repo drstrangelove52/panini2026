@@ -135,6 +135,32 @@ main { padding: 16px; max-width: 700px; margin: 0 auto; }
 }
 
 /* ── SEARCH ── */
+/* ── STICKER TABS ── */
+.sticker-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 14px;
+}
+.sticker-tab {
+  flex: 1;
+  padding: 10px 8px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  font-size: .9rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.sticker-tab.active {
+  color: var(--sided);
+  border-bottom-color: var(--sided);
+  font-weight: 700;
+}
+
+/* ── SEARCH BAR ── */
 .search-bar {
   display: flex;
   gap: 8px;
@@ -273,6 +299,10 @@ main { padding: 16px; max-width: 700px; margin: 0 auto; }
 .sticker-btn.duplicate {
   border-color: var(--perfect);  /* bold green – has spares to trade */
   background: #dcfce7;
+}
+.sticker-btn.want {
+  border-color: var(--sided);    /* blue – explicitly looking for this */
+  background: #dbeafe;
 }
 
 /* ── TRADE CARDS ── */
