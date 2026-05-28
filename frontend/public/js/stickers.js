@@ -124,7 +124,7 @@ function renderList(query) {
   for (const [, g] of Object.entries(groups)) {
     const code = g.stickers[0]?.country_code || "";
     const page = TEAM_PAGE[code];
-    const meta = page ? `Gruppe ${g.group} · S. ${page}` : `Gruppe ${g.group}`;
+    const meta = page ? `Gruppe ${g.group} · Seite ${page}` : `Gruppe ${g.group}`;
     html += renderGroup(g.name, code, meta, g.stickers);
   }
   if (!html) html = `<div class="empty-state"><div class="empty-icon">🔍</div>Keine Sticker gefunden</div>`;
