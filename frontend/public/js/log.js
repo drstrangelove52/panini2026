@@ -23,11 +23,19 @@ export async function renderLog(container) {
   container.innerHTML = `
     <div class="page-title" style="display:flex;align-items:center;justify-content:space-between">
       <span>🔐 Zugriffslog</span>
-      <button class="btn btn-outline btn-sm" id="btn-refresh-log">Aktualisieren</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" id="btn-refresh-log">Aktualisieren</button>
+        <button class="btn btn-danger btn-sm" id="btn-clear-log">Log leeren</button>
+      </div>
     </div>
     <div id="log-content"><div class="spinner"></div></div>
   `;
   document.getElementById("btn-refresh-log").addEventListener("click", () => loadLog());
+  document.getElementById("btn-clear-log").addEventListener("click", async () => {
+    if (!await window.appConfirm("Alle Log-Einträge löschen?")) return;
+    await api.clearLog();
+    await loadLog();
+  });
   await loadLog();
 }
 
@@ -59,6 +67,7 @@ async function loadLog() {
         <td style="font-family:monospace;font-size:.78rem">${e.ip || "–"}</td>
         <td style="font-size:.9rem">${flag}</td>
         <td style="font-size:.75rem;color:var(--muted)">${e.details || ""}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="window._deleteLogEntry(${e.id})">🗑</button></td>
       </tr>`;
     }).join("");
 
@@ -77,11 +86,16 @@ async function loadLog() {
       </div>
       <div style="overflow-x:auto">
         <table class="admin-table">
-          <thead><tr><th>Zeit</th><th>Ereignis</th><th>Nickname</th><th>IP</th><th>Land</th><th>Details</th></tr></thead>
+          <thead><tr><th>Zeit</th><th>Ereignis</th><th>Nickname</th><th>IP</th><th>Land</th><th>Details</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>`;
   } catch (e) {
     el.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
   }
+
+  window._deleteLogEntry = async (id) => {
+    await api.deleteLogEntry(id);
+    await loadLog();
+  };
 }

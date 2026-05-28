@@ -63,6 +63,8 @@ export const api = {
   // Admin
   adminStats:      ()         => req("GET",    "/admin/stats"),
   securityLog:     ()         => req("GET",    "/admin/security-log"),
+  clearLog:        ()         => req("DELETE", "/admin/security-log"),
+  deleteLogEntry:  (id)       => req("DELETE", `/admin/security-log/${id}`),
   adminUsers:      ()         => req("GET",    "/admin/users"),
   approveUser:     (id)       => req("POST",   `/admin/users/${id}/approve`),
   revokeUser:      (id)       => req("POST",   `/admin/users/${id}/revoke`),

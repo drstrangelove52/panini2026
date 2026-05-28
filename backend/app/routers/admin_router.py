@@ -102,6 +102,18 @@ def delete_sticker(sticker_id: int, db: Session = Depends(get_db), _=Depends(get
     db.commit()
 
 
+@router.delete("/security-log", status_code=204)
+def clear_security_log(db: Session = Depends(get_db), _=Depends(get_admin_user)):
+    db.query(models.SecurityEvent).delete()
+    db.commit()
+
+
+@router.delete("/security-log/{event_id}", status_code=204)
+def delete_security_event(event_id: int, db: Session = Depends(get_db), _=Depends(get_admin_user)):
+    db.query(models.SecurityEvent).filter(models.SecurityEvent.id == event_id).delete()
+    db.commit()
+
+
 @router.get("/security-log")
 def security_log(db: Session = Depends(get_db), _=Depends(get_admin_user)):
     events = db.query(models.SecurityEvent)\
