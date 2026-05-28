@@ -1,6 +1,7 @@
 import { api } from "./api.js";
 
 const EVENT_STYLE = {
+  ACCESS:        { label: "Seitenaufruf",  color: "var(--muted)" },
   LOGIN:         { label: "Login",         color: "#15803d" },
   LOGIN_FAIL:    { label: "Login Fehler",  color: "#b91c1c" },
   REGISTER:      { label: "Registrierung", color: "#1d4ed8" },

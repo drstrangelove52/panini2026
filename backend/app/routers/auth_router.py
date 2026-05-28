@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
 from ..database import get_db
 from .. import models
 from ..schemas import UserCreate, UserLogin, Token, UserOut
@@ -18,7 +19,8 @@ def _get_ip(request: Request) -> str:
 
 
 async def _log(db: Session, event: str, ip: str,
-               nickname: str = None, details: str = None):
+               nickname: str = None, details: str = None,
+               ntfy_priority: str = "high"):
     """Log a security event with geo-lookup; alert via ntfy if IP is outside Switzerland."""
     geo = await geolocate(ip)
     city = geo["city"]
@@ -40,8 +42,30 @@ async def _log(db: Session, event: str, ip: str,
         await notify(
             f"⚠️ Panini: {event} aus {geo['country']}",
             f"Ereignis: {event}\nNutzer: {nickname or '–'}\nIP: {ip}\nOrt: {geo_str}",
-            priority="high",
+            priority=ntfy_priority,
         )
+
+
+@router.post("/access", status_code=204)
+async def log_access(request: Request, db: Session = Depends(get_db)):
+    """
+    Called by the frontend on every page load (no auth required).
+    Deduplicated per IP per 2 hours to avoid log spam.
+    """
+    ip = _get_ip(request)
+
+    # Skip if this IP was already logged as ACCESS within the last 2 hours
+    cutoff = datetime.utcnow() - timedelta(hours=2)
+    already_logged = db.query(models.SecurityEvent).filter(
+        models.SecurityEvent.event == "ACCESS",
+        models.SecurityEvent.ip == ip,
+        models.SecurityEvent.timestamp >= cutoff,
+    ).first()
+    if already_logged:
+        return
+
+    # Page visits from abroad get default priority (less urgent than auth events)
+    await _log(db, "ACCESS", ip, ntfy_priority="default")
 
 
 @router.post("/register")

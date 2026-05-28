@@ -8,6 +8,8 @@ import { renderLog } from "./log.js";
 let currentPage = "stickers";
 
 async function boot() {
+  api.logAccess(); // fire-and-forget: log page visit with geo, no await needed
+
   if (!isLoggedIn()) {
     showAuth();
     return;

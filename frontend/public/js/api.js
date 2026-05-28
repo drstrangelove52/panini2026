@@ -39,9 +39,10 @@ async function req(method, path, body) {
 
 export const api = {
   // Auth
-  register: (nickname, password) => req("POST", "/auth/register", { nickname, password }),
-  login:    (nickname, password) => req("POST", "/auth/login",    { nickname, password }),
-  me:       ()                   => req("GET",  "/auth/me"),
+  logAccess: ()                   => req("POST", "/auth/access"),
+  register:  (nickname, password) => req("POST", "/auth/register", { nickname, password }),
+  login:     (nickname, password) => req("POST", "/auth/login",    { nickname, password }),
+  me:        ()                   => req("GET",  "/auth/me"),
 
   // Stickers
   stickers:    ()          => req("GET",    "/stickers"),
