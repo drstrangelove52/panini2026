@@ -72,3 +72,4 @@ class SecurityEvent(Base):
     ip = Column(String, nullable=True)
     nickname = Column(String, nullable=True)
     details = Column(String, nullable=True)
+    country_code = Column(String, nullable=True)  # ISO 3166-1 alpha-2, e.g. "CH"

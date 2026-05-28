@@ -35,15 +35,18 @@ def startup():
 
 def _migrate_db():
     """Apply incremental schema changes that can't be handled by create_all."""
+    migrations = [
+        "ALTER TABLE user_have ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE security_events ADD COLUMN country_code VARCHAR",
+    ]
     with engine.connect() as conn:
-        try:
-            conn.execute(text(
-                "ALTER TABLE user_have ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1"
-            ))
-            conn.commit()
-            logger.info("Migration: added quantity column to user_have")
-        except Exception:
-            pass  # Column already exists – safe to ignore
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+                logger.info("Migration applied: %s", sql[:60])
+            except Exception:
+                pass  # Column already exists – safe to ignore
 
 
 def _seed_stickers():

@@ -5,6 +5,7 @@ from .. import models
 from ..schemas import UserCreate, UserLogin, Token, UserOut
 from ..auth import hash_password, verify_password, create_access_token, get_current_user
 from ..ntfy import notify
+from ..geo import geolocate
 
 router = APIRouter()
 
@@ -16,16 +17,38 @@ def _get_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _log(db: Session, event: str, ip: str, nickname: str = None, details: str = None):
-    db.add(models.SecurityEvent(event=event, ip=ip, nickname=nickname, details=details))
+async def _log(db: Session, event: str, ip: str,
+               nickname: str = None, details: str = None):
+    """Log a security event with geo-lookup; alert via ntfy if IP is outside Switzerland."""
+    geo = await geolocate(ip)
+    city = geo["city"]
+    geo_str = (f"{city}, {geo['country']}" if city else geo["country"]) \
+              + f" ({geo['country_code']})"
+    full_details = f"{details} · {geo_str}" if details else geo_str
+
+    db.add(models.SecurityEvent(
+        event=event,
+        ip=ip,
+        nickname=nickname,
+        details=full_details,
+        country_code=geo["country_code"],
+    ))
     db.commit()
+
+    # Push notification for any non-Swiss, non-local access
+    if not geo["is_local"] and geo["country_code"] not in ("CH", "??"):
+        await notify(
+            f"⚠️ Panini: {event} aus {geo['country']}",
+            f"Ereignis: {event}\nNutzer: {nickname or '–'}\nIP: {ip}\nOrt: {geo_str}",
+            priority="high",
+        )
 
 
 @router.post("/register")
 async def register(data: UserCreate, request: Request, db: Session = Depends(get_db)):
     ip = _get_ip(request)
     if db.query(models.User).filter(models.User.nickname == data.nickname).first():
-        _log(db, "REGISTER_FAIL", ip, data.nickname, "Nickname bereits vergeben")
+        await _log(db, "REGISTER_FAIL", ip, data.nickname, "Nickname bereits vergeben")
         raise HTTPException(status_code=400, detail="Nickname bereits vergeben")
     db.add(models.User(
         nickname=data.nickname,
@@ -34,7 +57,7 @@ async def register(data: UserCreate, request: Request, db: Session = Depends(get
         is_admin=False,
     ))
     db.commit()
-    _log(db, "REGISTER", ip, data.nickname)
+    await _log(db, "REGISTER", ip, data.nickname)
     await notify(
         "Neue Registrierung – Panini Tauschbörse",
         f"'{data.nickname}' möchte mitmachen. Bitte im Admin-Bereich freischalten.",
@@ -44,13 +67,13 @@ async def register(data: UserCreate, request: Request, db: Session = Depends(get
 
 
 @router.post("/login", response_model=Token)
-def login(data: UserLogin, request: Request, db: Session = Depends(get_db)):
+async def login(data: UserLogin, request: Request, db: Session = Depends(get_db)):
     ip = _get_ip(request)
     user = db.query(models.User).filter(models.User.nickname == data.nickname).first()
     if not user or not verify_password(data.password, user.password_hash):
-        _log(db, "LOGIN_FAIL", ip, data.nickname)
+        await _log(db, "LOGIN_FAIL", ip, data.nickname, "Falscher Nickname oder Passwort")
         raise HTTPException(status_code=401, detail="Falscher Nickname oder Passwort")
-    _log(db, "LOGIN", ip, data.nickname)
+    await _log(db, "LOGIN", ip, data.nickname)
     return Token(
         access_token=create_access_token(user.id),
         token_type="bearer",

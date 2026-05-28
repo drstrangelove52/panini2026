@@ -7,6 +7,14 @@ const EVENT_STYLE = {
   REGISTER_FAIL: { label: "Reg. Fehler",   color: "#b91c1c" },
 };
 
+/** Convert ISO 3166-1 alpha-2 code to flag emoji (e.g. "CH" → 🇨🇭) */
+function flagEmoji(code) {
+  if (!code || code.length !== 2) return "🏳️";
+  return [...code.toUpperCase()]
+    .map(c => String.fromCodePoint(0x1F1E0 + c.charCodeAt(0) - 65))
+    .join("");
+}
+
 export async function renderLog(container) {
   container.innerHTML = `
     <div class="page-title" style="display:flex;align-items:center;justify-content:space-between">
@@ -29,24 +37,43 @@ async function loadLog() {
       el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔐</div>Noch keine Einträge</div>`;
       return;
     }
+
+    const foreignCount = events.filter(e => e.country_code && e.country_code !== "CH").length;
+
     const rows = events.map(e => {
-      const s = EVENT_STYLE[e.event] || { label: e.event, color: "var(--muted)" };
+      const s  = EVENT_STYLE[e.event] || { label: e.event, color: "var(--muted)" };
       const ts = new Date(e.timestamp).toLocaleString("de-CH");
-      return `<tr>
+      const isForeign = e.country_code && e.country_code !== "CH";
+      const flag = flagEmoji(e.country_code || "");
+      const rowBg = isForeign ? "background:#fff1f2" : "";
+      const warn  = isForeign ? `<span title="Ausländischer Zugriff!" style="color:#b91c1c">⚠️</span> ` : "";
+
+      return `<tr style="${rowBg}">
         <td style="white-space:nowrap;font-size:.78rem">${ts}</td>
-        <td><span style="font-weight:700;color:${s.color}">${s.label}</span></td>
+        <td>${warn}<span style="font-weight:700;color:${s.color}">${s.label}</span></td>
         <td>${e.nickname || "–"}</td>
         <td style="font-family:monospace;font-size:.78rem">${e.ip || "–"}</td>
+        <td style="font-size:.9rem">${flag} ${e.country_code || "?"}</td>
         <td style="font-size:.75rem;color:var(--muted)">${e.details || ""}</td>
       </tr>`;
     }).join("");
+
+    const foreignBanner = foreignCount > 0
+      ? `<div style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:8px;
+                     padding:8px 12px;margin-bottom:10px;font-size:.85rem;color:#b91c1c">
+           ⚠️ <strong>${foreignCount} Zugriff${foreignCount > 1 ? "e" : ""}</strong>
+           aus dem Ausland in den letzten 200 Einträgen
+         </div>`
+      : "";
+
     el.innerHTML = `
+      ${foreignBanner}
       <div style="font-size:.78rem;color:var(--muted);padding:4px 0 8px">
         ${events.length} Einträge (max. 200)
       </div>
       <div style="overflow-x:auto">
         <table class="admin-table">
-          <thead><tr><th>Zeit</th><th>Ereignis</th><th>Nickname</th><th>IP</th><th>Details</th></tr></thead>
+          <thead><tr><th>Zeit</th><th>Ereignis</th><th>Nickname</th><th>IP</th><th>Land</th><th>Details</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>`;

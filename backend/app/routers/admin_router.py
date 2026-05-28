@@ -107,7 +107,8 @@ def security_log(db: Session = Depends(get_db), _=Depends(get_admin_user)):
         .order_by(models.SecurityEvent.timestamp.desc())\
         .limit(200).all()
     return [{"id": e.id, "timestamp": e.timestamp, "event": e.event,
-             "ip": e.ip, "nickname": e.nickname, "details": e.details}
+             "ip": e.ip, "nickname": e.nickname, "details": e.details,
+             "country_code": e.country_code}
             for e in events]
 
 
