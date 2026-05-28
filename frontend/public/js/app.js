@@ -74,6 +74,7 @@ function showApp() {
 
 function navigateTo(page) {
   currentPage = page;
+  window.scrollTo(0, 0); // always return to top when switching pages
 
   // Update nav
   document.querySelectorAll(".nav-btn").forEach(b => {
