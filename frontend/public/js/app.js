@@ -4,6 +4,7 @@ import { renderStickers } from "./stickers.js";
 import { renderTrades } from "./trades.js";
 import { renderAdmin } from "./admin.js";
 import { renderLog } from "./log.js";
+import { renderInfo } from "./info.js";
 
 let currentPage = "stickers";
 
@@ -83,6 +84,7 @@ function navigateTo(page) {
   switch (page) {
     case "stickers": renderStickers(main);  break;
     case "trades":   renderTrades(main);    break;
+    case "info":     renderInfo(main);      break;
     case "admin":    renderAdmin(main);     break;
     case "log":      renderLog(main);       break;
   }
