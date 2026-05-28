@@ -42,6 +42,7 @@ class UserHave(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     sticker_id = Column(Integer, ForeignKey("stickers.id"), nullable=False)
+    quantity = Column(Integer, nullable=False, default=1)
 
     user = relationship("User", back_populates="have")
     sticker = relationship("Sticker", back_populates="have_entries")

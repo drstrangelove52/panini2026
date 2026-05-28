@@ -47,6 +47,7 @@ export const api = {
   stickers:    ()          => req("GET",    "/stickers"),
   myHave:      ()          => req("GET",    "/stickers/my/have"),
   myWant:      ()          => req("GET",    "/stickers/my/want"),
+  setHaveQty:  (id, qty)   => req("PATCH",  `/stickers/my/have/${id}`, { quantity: qty }),
   addHave:     (id)        => req("PUT",    `/stickers/my/have/${id}`),
   removeHave:  (id)        => req("DELETE", `/stickers/my/have/${id}`),
   addWant:     (id)        => req("PUT",    `/stickers/my/want/${id}`),

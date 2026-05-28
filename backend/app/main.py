@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base, SessionLocal
 from .routers import auth_router, stickers_router, trades_router, admin_router
 from . import models
+from sqlalchemy import text
 import os, json, logging
 
 logging.basicConfig(level=logging.INFO)
@@ -27,8 +28,22 @@ app.include_router(admin_router.router,    prefix="/api/admin",   tags=["admin"]
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
+    _migrate_db()
     _seed_stickers()
     _ensure_admin()
+
+
+def _migrate_db():
+    """Apply incremental schema changes that can't be handled by create_all."""
+    with engine.connect() as conn:
+        try:
+            conn.execute(text(
+                "ALTER TABLE user_have ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1"
+            ))
+            conn.commit()
+            logger.info("Migration: added quantity column to user_have")
+        except Exception:
+            pass  # Column already exists – safe to ignore
 
 
 def _seed_stickers():

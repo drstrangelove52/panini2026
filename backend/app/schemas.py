@@ -71,6 +71,17 @@ class StickerCreate(BaseModel):
     is_foil: bool = False
 
 
+class HaveItem(BaseModel):
+    sticker_id: int
+    quantity: int
+
+    model_config = {"from_attributes": True}
+
+
+class SetQuantity(BaseModel):
+    quantity: int
+
+
 class BulkUpdate(BaseModel):
     add: List[int] = []
     remove: List[int] = []

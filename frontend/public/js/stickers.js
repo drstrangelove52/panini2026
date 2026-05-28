@@ -3,11 +3,12 @@ import { api } from "./api.js";
 // Positionen werden komplett per CSS (album-pos-N Klassen) gesteuert
 
 let allStickers = [];
-let haveSet = new Set();
+let haveQtyMap = new Map(); // sticker_id → quantity
 let wantSet = new Set();
 let currentTab = "have"; // "have" | "want"
 let pendingHaveAdd = [], pendingHaveRem = [], pendingWantAdd = [], pendingWantRem = [];
 let saveTimer = null;
+let activePopover = null;
 
 export async function renderStickers(container) {
   container.innerHTML = `
@@ -33,6 +34,7 @@ export async function renderStickers(container) {
 
   window._switchTab = (tab) => {
     currentTab = tab;
+    closePopover();
     document.getElementById("tab-have").classList.toggle("active", tab === "have");
     document.getElementById("tab-want").classList.toggle("active", tab === "want");
     updateModeBanner();
@@ -40,15 +42,19 @@ export async function renderStickers(container) {
   };
 
   document.getElementById("sticker-search").addEventListener("input", e => {
+    closePopover();
     renderList(e.target.value);
   });
 
   try {
-    [allStickers, haveSet, wantSet] = await Promise.all([
+    const [stickers, haveItems, wantIds] = await Promise.all([
       api.stickers(),
-      api.myHave().then(ids => new Set(ids)),
-      api.myWant().then(ids => new Set(ids)),
+      api.myHave(),
+      api.myWant(),
     ]);
+    allStickers = stickers;
+    haveQtyMap = new Map(haveItems.map(h => [h.sticker_id, h.quantity]));
+    wantSet = new Set(wantIds);
   } catch (e) {
     document.getElementById("sticker-list").innerHTML =
       `<div class="alert alert-error">${e.message}</div>`;
@@ -82,7 +88,7 @@ function renderStats() {
   if (!el || !allStickers.length) return;
   const total = allStickers.length;
   const missing = wantSet.size;
-  const duplicates = haveSet.size;
+  const duplicates = haveQtyMap.size;
   const collected = total - missing;
   const pct = Math.round(collected / total * 100);
   el.innerHTML = `
@@ -142,7 +148,7 @@ function renderList(query) {
 
   // Bind click events
   container.querySelectorAll(".sticker-btn").forEach(btn => {
-    btn.addEventListener("click", () => toggleSticker(parseInt(btn.dataset.id)));
+    btn.addEventListener("click", () => toggleSticker(parseInt(btn.dataset.id), btn));
   });
 
   // Expand groups with marked stickers by default
@@ -163,33 +169,39 @@ function renderList(query) {
 }
 
 function renderGroup(name, code, meta, stickers) {
-  const marked = stickers.filter(s => haveSet.has(s.id) || wantSet.has(s.id)).length;
+  const marked = stickers.filter(s => haveQtyMap.has(s.id) || wantSet.has(s.id)).length;
   const isTeam = stickers.length > 0 && stickers[0].category === "team";
 
   let btns = "";
   if (isTeam) {
     btns = stickers.map(s => {
-      const inHave = haveSet.has(s.id);
+      const inHave = haveQtyMap.has(s.id);
       const inWant = wantSet.has(s.id);
-      let cls = stickerStateCls(inHave, inWant);
-      if (s.is_foil) cls += " foil";
-      return `<button class="sticker-btn album-btn album-pos-${s.number}${cls}"
+      const qty = haveQtyMap.get(s.id) || 0;
+      const stateCls = stickerStateCls(inHave, inWant);
+      const foilCls = s.is_foil ? " foil" : "";
+      const qtyBadge = qty > 1 ? `<span class="qty-badge">×${qty}</span>` : "";
+      return `<button class="sticker-btn album-btn album-pos-${s.number} ${stateCls}${foilCls}"
         data-id="${s.id}"
         title="${s.description || ""}">
         <span class="s-code">${s.code}</span>
         <span class="s-desc">${s.description || ""}</span>
+        ${qtyBadge}
       </button>`;
     }).join("") +
     `<div class="album-page-sep"></div>`;
   } else {
     btns = stickers.map(s => {
-      const inHave = haveSet.has(s.id);
+      const inHave = haveQtyMap.has(s.id);
       const inWant = wantSet.has(s.id);
-      let cls = stickerStateCls(inHave, inWant);
-      if (s.is_foil) cls += " foil";
-      return `<button class="sticker-btn ${cls}" data-id="${s.id}" title="${s.description || ""}">
+      const qty = haveQtyMap.get(s.id) || 0;
+      const stateCls = stickerStateCls(inHave, inWant);
+      const foilCls = s.is_foil ? " foil" : "";
+      const qtyBadge = qty > 1 ? `<span class="qty-badge">×${qty}</span>` : "";
+      return `<button class="sticker-btn ${stateCls}${foilCls}" data-id="${s.id}" title="${s.description || ""}">
         <span class="s-code">${s.code}</span>
         <span class="s-desc">${s.description || ""}</span>
+        ${qtyBadge}
       </button>`;
     }).join("");
   }
@@ -210,33 +222,142 @@ function renderGroup(name, code, meta, stickers) {
     </div>`;
 }
 
-async function toggleSticker(id) {
-  const isHave = currentTab === "have";
-  const set = isHave ? haveSet : wantSet;
-
-  if (set.has(id)) {
-    set.delete(id);
-    if (isHave) { pendingHaveRem.push(id); }
-    else        { pendingWantRem.push(id); }
-  } else {
-    set.add(id);
-    if (isHave) { pendingHaveAdd.push(id); }
-    else        { pendingWantAdd.push(id); }
-  }
-
+function updateStickerBtn(id) {
   const btn = document.querySelector(`.sticker-btn[data-id="${id}"]`);
-  if (btn) {
-    const inHave = haveSet.has(id);
-    const inWant = wantSet.has(id);
-    btn.className = btn.className
-      .replace(/\bhave\b|\bwant\b|\bboth\b/g, "").trim();
-    const stateCls = stickerStateCls(inHave, inWant).trim();
-    if (stateCls) btn.classList.add(...stateCls.split(" ").filter(Boolean));
+  if (!btn) return;
+  const inHave = haveQtyMap.has(id);
+  const inWant = wantSet.has(id);
+  const qty = haveQtyMap.get(id) || 0;
+
+  // Update state classes
+  btn.className = btn.className
+    .replace(/\bhave\b|\bwant\b|\bboth\b/g, "").trim();
+  const stateCls = stickerStateCls(inHave, inWant).trim();
+  if (stateCls) btn.classList.add(...stateCls.split(" ").filter(Boolean));
+
+  // Update qty badge
+  let badge = btn.querySelector(".qty-badge");
+  if (qty > 1) {
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "qty-badge";
+      btn.appendChild(badge);
+    }
+    badge.textContent = `×${qty}`;
+  } else if (badge) {
+    badge.remove();
+  }
+}
+
+async function toggleSticker(id, btnEl) {
+  const isHave = currentTab === "have";
+
+  if (isHave) {
+    if (haveQtyMap.has(id)) {
+      // Already marked — show qty popover instead of toggling
+      showQtyPopover(id, btnEl);
+      return;
+    }
+    // First tap: add with qty=1
+    haveQtyMap.set(id, 1);
+    pendingHaveAdd.push(id);
+  } else {
+    // Want tab: simple toggle
+    if (wantSet.has(id)) {
+      wantSet.delete(id);
+      pendingWantRem.push(id);
+    } else {
+      wantSet.add(id);
+      pendingWantAdd.push(id);
+    }
   }
 
+  updateStickerBtn(id);
   renderStats();
   scheduleSave();
 }
+
+// ── Qty popover ────────────────────────────────────────────────────────────
+
+function showQtyPopover(id, btnEl) {
+  closePopover();
+
+  const qty = haveQtyMap.get(id) || 1;
+  const pop = document.createElement("div");
+  pop.className = "qty-popover";
+  pop.innerHTML = `
+    <button class="qty-pop-btn" data-action="minus">−</button>
+    <span class="qty-pop-val">${qty}</span>
+    <button class="qty-pop-btn" data-action="plus">+</button>
+    <button class="qty-pop-close" title="Schliessen">✕</button>
+  `;
+
+  document.body.appendChild(pop);
+  activePopover = pop;
+
+  // Position below the button, horizontally centred
+  const rect = btnEl.getBoundingClientRect();
+  const popW = pop.offsetWidth || 160;
+  let left = rect.left + rect.width / 2 - popW / 2 + window.scrollX;
+  left = Math.max(8, Math.min(left, window.innerWidth - popW - 8));
+  pop.style.top  = `${rect.bottom + 8 + window.scrollY}px`;
+  pop.style.left = `${left}px`;
+
+  const valEl = pop.querySelector(".qty-pop-val");
+
+  pop.querySelector("[data-action=minus]").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const cur = haveQtyMap.get(id) || 1;
+    const next = cur - 1;
+    if (next <= 0) {
+      haveQtyMap.delete(id);
+      closePopover();
+    } else {
+      haveQtyMap.set(id, next);
+      valEl.textContent = next;
+    }
+    updateStickerBtn(id);
+    renderStats();
+    try { await api.setHaveQty(id, next); } catch (e) { console.error(e); }
+  });
+
+  pop.querySelector("[data-action=plus]").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const cur = haveQtyMap.get(id) || 1;
+    const next = cur + 1;
+    haveQtyMap.set(id, next);
+    valEl.textContent = next;
+    updateStickerBtn(id);
+    renderStats();
+    try { await api.setHaveQty(id, next); } catch (e) { console.error(e); }
+  });
+
+  pop.querySelector(".qty-pop-close").addEventListener("click", (e) => {
+    e.stopPropagation();
+    closePopover();
+  });
+
+  // Close when clicking outside
+  setTimeout(() => {
+    document.addEventListener("click", _outsideClick);
+  }, 0);
+}
+
+function _outsideClick(e) {
+  if (activePopover && !activePopover.contains(e.target)) {
+    closePopover();
+  }
+}
+
+function closePopover() {
+  if (activePopover) {
+    activePopover.remove();
+    activePopover = null;
+  }
+  document.removeEventListener("click", _outsideClick);
+}
+
+// ── Debounced bulk save ────────────────────────────────────────────────────
 
 function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer);

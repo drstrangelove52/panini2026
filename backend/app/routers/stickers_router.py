@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from ..database import get_db
 from .. import models
-from ..schemas import StickerOut, BulkUpdate
+from ..schemas import StickerOut, BulkUpdate, HaveItem, SetQuantity
 from ..auth import get_active_user
 
 router = APIRouter()
@@ -14,10 +14,26 @@ def list_stickers(db: Session = Depends(get_db), _=Depends(get_active_user)):
     return db.query(models.Sticker).order_by(models.Sticker.sort_order).all()
 
 
-@router.get("/my/have", response_model=List[int])
+@router.get("/my/have", response_model=List[HaveItem])
 def my_have(db: Session = Depends(get_db), user=Depends(get_active_user)):
-    return [h.sticker_id for h in db.query(models.UserHave).filter(
-        models.UserHave.user_id == user.id).all()]
+    return db.query(models.UserHave).filter(
+        models.UserHave.user_id == user.id).all()
+
+
+@router.patch("/my/have/{sticker_id}", status_code=204)
+def set_have_qty(sticker_id: int, data: SetQuantity, db: Session = Depends(get_db), user=Depends(get_active_user)):
+    entry = db.query(models.UserHave).filter(
+        models.UserHave.user_id == user.id,
+        models.UserHave.sticker_id == sticker_id).first()
+    if data.quantity <= 0:
+        if entry:
+            db.delete(entry)
+    elif entry:
+        entry.quantity = data.quantity
+    else:
+        _require_sticker(sticker_id, db)
+        db.add(models.UserHave(user_id=user.id, sticker_id=sticker_id, quantity=data.quantity))
+    db.commit()
 
 
 @router.get("/my/want", response_model=List[int])
