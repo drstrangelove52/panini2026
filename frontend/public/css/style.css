@@ -167,10 +167,7 @@ main { padding: 16px; max-width: 700px; margin: 0 auto; }
 }
 .sticker-grid.hidden { display: none; }
 
-.sticker-grid-album {
-  grid-template-columns: repeat(4, 1fr) 6px repeat(4, 1fr);
-  grid-template-rows: repeat(3, auto);
-}
+/* ── ALBUM LAYOUT ── */
 .album-btn {
   aspect-ratio: 3 / 4;
   min-height: unset;
@@ -178,13 +175,64 @@ main { padding: 16px; max-width: 700px; margin: 0 auto; }
 }
 .album-btn .s-code { font-size: .65rem; }
 .album-btn .s-desc { font-size: .52rem; }
-.album-btn.wide {
-  aspect-ratio: 2 / 1;
+.album-pos-13      { aspect-ratio: 2 / 1; }
+
+/* Positionen linke Seite – gleich in beiden Layouts */
+.album-pos-1  { grid-row: 1; grid-column: 3; }
+.album-pos-2  { grid-row: 1; grid-column: 4; }
+.album-pos-3  { grid-row: 2; grid-column: 1; }
+.album-pos-4  { grid-row: 2; grid-column: 2; }
+.album-pos-5  { grid-row: 2; grid-column: 3; }
+.album-pos-6  { grid-row: 2; grid-column: 4; }
+.album-pos-7  { grid-row: 3; grid-column: 1; }
+.album-pos-8  { grid-row: 3; grid-column: 2; }
+.album-pos-9  { grid-row: 3; grid-column: 3; }
+.album-pos-10 { grid-row: 3; grid-column: 4; }
+
+/* Desktop / Tablet: Doppelseite nebeneinander (≥ 600px) */
+@media (min-width: 600px) {
+  .sticker-grid-album {
+    grid-template-columns: repeat(4, 1fr) 6px repeat(4, 1fr);
+    grid-template-rows: repeat(3, auto);
+  }
+  .album-pos-11 { grid-row: 1; grid-column: 6; }
+  .album-pos-12 { grid-row: 1; grid-column: 7; }
+  .album-pos-13 { grid-row: 1; grid-column: 8 / span 2; }
+  .album-pos-14 { grid-row: 2; grid-column: 6; }
+  .album-pos-15 { grid-row: 2; grid-column: 7; }
+  .album-pos-16 { grid-row: 2; grid-column: 8; }
+  .album-pos-17 { grid-row: 2; grid-column: 9; }
+  .album-pos-18 { grid-row: 3; grid-column: 7; }
+  .album-pos-19 { grid-row: 3; grid-column: 8; }
+  .album-pos-20 { grid-row: 3; grid-column: 9; }
+  .album-page-sep {
+    grid-column: 5; grid-row: 1 / span 3;
+    border-left: 2px dashed var(--border);
+    margin: 0 2px; opacity: .5;
+  }
 }
-.album-page-sep {
-  border-left: 2px dashed var(--border);
-  margin: 0 2px;
-  opacity: 0.5;
+
+/* Mobile Portrait: Doppelseite gestapelt (< 600px) */
+@media (max-width: 599px) {
+  .sticker-grid-album {
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(7, auto);
+  }
+  .album-pos-11 { grid-row: 5; grid-column: 1; }
+  .album-pos-12 { grid-row: 5; grid-column: 2; }
+  .album-pos-13 { grid-row: 5; grid-column: 3 / span 2; }
+  .album-pos-14 { grid-row: 6; grid-column: 1; }
+  .album-pos-15 { grid-row: 6; grid-column: 2; }
+  .album-pos-16 { grid-row: 6; grid-column: 3; }
+  .album-pos-17 { grid-row: 6; grid-column: 4; }
+  .album-pos-18 { grid-row: 7; grid-column: 2; }
+  .album-pos-19 { grid-row: 7; grid-column: 3; }
+  .album-pos-20 { grid-row: 7; grid-column: 4; }
+  .album-page-sep {
+    grid-column: 1 / -1; grid-row: 4;
+    border-top: 2px dashed var(--border);
+    margin: 2px 0; opacity: .5;
+  }
 }
 
 .sticker-btn {

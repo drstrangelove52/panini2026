@@ -1,28 +1,6 @@
 import { api } from "./api.js";
 
-// 9-Spalten-Grid: col 1-4 = linke Seite, col 5 = Trenner, col 6-9 = rechte Seite
-const TEAM_LAYOUT = {
-  1:  { row: 1, col: 3, span: 1 },
-  2:  { row: 1, col: 4, span: 1 },
-  3:  { row: 2, col: 1, span: 1 },
-  4:  { row: 2, col: 2, span: 1 },
-  5:  { row: 2, col: 3, span: 1 },
-  6:  { row: 2, col: 4, span: 1 },
-  7:  { row: 3, col: 1, span: 1 },
-  8:  { row: 3, col: 2, span: 1 },
-  9:  { row: 3, col: 3, span: 1 },
-  10: { row: 3, col: 4, span: 1 },
-  11: { row: 1, col: 6, span: 1 },
-  12: { row: 1, col: 7, span: 1 },
-  13: { row: 1, col: 8, span: 2 },
-  14: { row: 2, col: 6, span: 1 },
-  15: { row: 2, col: 7, span: 1 },
-  16: { row: 2, col: 8, span: 1 },
-  17: { row: 2, col: 9, span: 1 },
-  18: { row: 3, col: 7, span: 1 },
-  19: { row: 3, col: 8, span: 1 },
-  20: { row: 3, col: 9, span: 1 },
-};
+// Positionen werden komplett per CSS (album-pos-N Klassen) gesteuert
 
 let allStickers = [];
 let haveSet = new Set();
@@ -177,24 +155,20 @@ function renderGroup(name, code, meta, stickers) {
   let btns = "";
   if (isTeam) {
     btns = stickers.map(s => {
-      const pos = TEAM_LAYOUT[s.number];
-      if (!pos) return "";
       const inHave = haveSet.has(s.id);
       const inWant = wantSet.has(s.id);
       let cls = "";
       if (currentTab === "have" && inHave) cls = " have";
       else if (currentTab === "want" && inWant) cls = " want";
       if (s.is_foil) cls += " foil";
-      if (pos.span > 1) cls += " wide";
-      return `<button class="sticker-btn album-btn${cls}"
+      return `<button class="sticker-btn album-btn album-pos-${s.number}${cls}"
         data-id="${s.id}"
-        style="grid-row:${pos.row};grid-column:${pos.col}/span ${pos.span}"
         title="${s.description || ""}">
         <span class="s-code">${s.code}</span>
         <span class="s-desc">${s.description || ""}</span>
       </button>`;
     }).join("") +
-    `<div class="album-page-sep" style="grid-column:5;grid-row:1/span 3"></div>`;
+    `<div class="album-page-sep"></div>`;
   } else {
     btns = stickers.map(s => {
       const inHave = haveSet.has(s.id);
