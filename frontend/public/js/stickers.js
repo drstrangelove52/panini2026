@@ -205,7 +205,13 @@ function updateStickerBtn(id) {
 
 // ── Toggle (cycle: none → want → have → popover) ──────────────────────────────
 
+const _clickCooldown = new Set();
+
 function toggleSticker(id, btnEl) {
+  if (_clickCooldown.has(id)) return;
+  _clickCooldown.add(id);
+  setTimeout(() => _clickCooldown.delete(id), 400);
+
   const qty = haveQtyMap.get(id) || 0;
 
   if (qty > 0) {
