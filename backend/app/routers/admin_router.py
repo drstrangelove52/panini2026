@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from datetime import timezone
 from typing import List
 from ..database import get_db
 from .. import models
@@ -106,7 +107,15 @@ def security_log(db: Session = Depends(get_db), _=Depends(get_admin_user)):
     events = db.query(models.SecurityEvent)\
         .order_by(models.SecurityEvent.timestamp.desc())\
         .limit(200).all()
-    return [{"id": e.id, "timestamp": e.timestamp, "event": e.event,
+    def _ts(dt):
+        # SQLite stores naive UTC datetimes – attach +00:00 so JS parses correctly
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
+
+    return [{"id": e.id, "timestamp": _ts(e.timestamp), "event": e.event,
              "ip": e.ip, "nickname": e.nickname, "details": e.details,
              "country_code": e.country_code}
             for e in events]

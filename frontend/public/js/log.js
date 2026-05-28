@@ -8,12 +8,15 @@ const EVENT_STYLE = {
   REGISTER_FAIL: { label: "Reg. Fehler",   color: "#b91c1c" },
 };
 
-/** Convert ISO 3166-1 alpha-2 code to flag emoji (e.g. "CH" → 🇨🇭) */
-function flagEmoji(code) {
-  if (!code || code.length !== 2) return "🏳️";
-  return [...code.toUpperCase()]
-    .map(c => String.fromCodePoint(0x1F1E0 + c.charCodeAt(0) - 65))
-    .join("");
+/** Flag image + code — works on Windows (no emoji flag support there) */
+function flagHtml(code) {
+  if (!code || code.length !== 2) return "–";
+  const lower = code.toLowerCase();
+  return `<img src="https://flagcdn.com/16x12/${lower}.png"
+               width="16" height="12" alt="${code}"
+               style="vertical-align:middle;margin-right:4px;border-radius:1px"
+               onerror="this.style.display='none'"
+         >${code}`;
 }
 
 export async function renderLog(container) {
@@ -43,9 +46,9 @@ async function loadLog() {
 
     const rows = events.map(e => {
       const s  = EVENT_STYLE[e.event] || { label: e.event, color: "var(--muted)" };
-      const ts = new Date(e.timestamp).toLocaleString("de-CH");
+      const ts = new Date(e.timestamp).toLocaleString("de-CH", { timeZone: "Europe/Zurich" });
       const isForeign = e.country_code && e.country_code !== "CH";
-      const flag = flagEmoji(e.country_code || "");
+      const flag = flagHtml(e.country_code || "");
       const rowBg = isForeign ? "background:#fff1f2" : "";
       const warn  = isForeign ? `<span title="Ausländischer Zugriff!" style="color:#b91c1c">⚠️</span> ` : "";
 
