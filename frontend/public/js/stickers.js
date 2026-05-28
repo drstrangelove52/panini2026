@@ -148,7 +148,10 @@ function renderList(query) {
 
   // Bind click events
   container.querySelectorAll(".sticker-btn").forEach(btn => {
-    btn.addEventListener("click", () => toggleSticker(parseInt(btn.dataset.id), btn));
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleSticker(parseInt(btn.dataset.id), btn);
+    });
   });
 
   // Expand groups with marked stickers by default
@@ -295,12 +298,24 @@ function showQtyPopover(id, btnEl) {
   document.body.appendChild(pop);
   activePopover = pop;
 
-  // Position below the button, horizontally centred
+  // Position: fixed to viewport. Prefer below the button, fall back to above.
   const rect = btnEl.getBoundingClientRect();
-  const popW = pop.offsetWidth || 160;
-  let left = rect.left + rect.width / 2 - popW / 2 + window.scrollX;
+  const popH = pop.offsetHeight || 54;
+  const popW = pop.offsetWidth  || 170;
+  const gap  = 8;
+  const NAV  = 72; // bottom nav height
+
+  let top;
+  if (rect.bottom + gap + popH < window.innerHeight - NAV) {
+    top = rect.bottom + gap;               // fits below
+  } else {
+    top = Math.max(64, rect.top - popH - gap); // above button (min: below header)
+  }
+
+  let left = rect.left + rect.width / 2 - popW / 2;
   left = Math.max(8, Math.min(left, window.innerWidth - popW - 8));
-  pop.style.top  = `${rect.bottom + 8 + window.scrollY}px`;
+
+  pop.style.top  = `${top}px`;
   pop.style.left = `${left}px`;
 
   const valEl = pop.querySelector(".qty-pop-val");
