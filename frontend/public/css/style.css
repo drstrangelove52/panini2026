@@ -268,22 +268,36 @@ main { padding: 16px; max-width: 700px; margin: 0 auto; }
   background: #fff7ed;
 }
 
-/* ── LEGEND ── */
-.legend {
+/* ── MODE BANNER ── */
+.mode-banner {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: .82rem;
+  margin-bottom: 10px;
   flex-wrap: wrap;
-  margin-bottom: 14px;
-  font-size: .78rem;
 }
-.legend-item { display: flex; align-items: center; gap: 5px; }
-.legend-dot {
-  width: 14px; height: 14px;
-  border-radius: 3px;
+.mode-banner.mode-have { background: #dcfce7; color: #15803d; border: 1.5px solid var(--perfect); }
+.mode-banner.mode-want { background: #dbeafe; color: #1d4ed8; border: 1.5px solid var(--sided); }
+.mode-dot {
+  display: inline-block;
+  width: 11px; height: 11px;
+  border-radius: 2px;
   border: 2px solid;
+  flex-shrink: 0;
 }
-.legend-dot.have { border-color: var(--perfect); background: #dcfce7; }
-.legend-dot.want { border-color: var(--sided); background: #dbeafe; }
+.mode-dot.have { border-color: var(--perfect); background: #dcfce7; }
+.mode-dot.want { border-color: var(--sided);   background: #dbeafe; }
+.mode-legend {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .75rem;
+  opacity: .75;
+}
 
 /* ── TRADE CARDS ── */
 .trade-card {

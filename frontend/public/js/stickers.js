@@ -15,13 +15,9 @@ export async function renderStickers(container) {
     <div id="album-stats"></div>
     <div class="tabs">
       <button id="tab-have" class="active" onclick="window._switchTab('have')">📦 Doppelte</button>
-      <button id="tab-want" onclick="window._switchTab('want')">🔍 Suche</button>
+      <button id="tab-want" onclick="window._switchTab('want')">🔍 Fehlende</button>
     </div>
-    <div class="legend">
-      <div class="legend-item"><div class="legend-dot have"></div> Markiert</div>
-      <div class="legend-item"><div class="legend-dot want"></div> Markiert</div>
-      <div style="color:var(--muted);font-size:.78rem">Sticker antippen zum Markieren</div>
-    </div>
+    <div id="mode-banner"></div>
     <div class="search-bar">
       <input id="sticker-search" type="search" placeholder="Suche: GER 1, Torwart, ..." />
     </div>
@@ -39,6 +35,7 @@ export async function renderStickers(container) {
     currentTab = tab;
     document.getElementById("tab-have").classList.toggle("active", tab === "have");
     document.getElementById("tab-want").classList.toggle("active", tab === "want");
+    updateModeBanner();
     renderList(document.getElementById("sticker-search").value);
   };
 
@@ -59,7 +56,25 @@ export async function renderStickers(container) {
   }
 
   renderStats();
+  updateModeBanner();
   renderList("");
+}
+
+function stickerStateCls(inHave, inWant) {
+  if (inHave && inWant) return "both";
+  if (inHave) return "have";
+  if (inWant) return "want";
+  return "";
+}
+
+function updateModeBanner() {
+  const el = document.getElementById("mode-banner");
+  if (!el) return;
+  const isHave = currentTab === "have";
+  el.className = "mode-banner " + (isHave ? "mode-have" : "mode-want");
+  el.innerHTML = isHave
+    ? `<span class="mode-dot have"></span> Tippen markiert als <strong>Doppelt</strong> <span class="mode-legend"><span class="mode-dot have"></span>Doppelt &nbsp; <span class="mode-dot want"></span>Fehlend</span>`
+    : `<span class="mode-dot want"></span> Tippen markiert als <strong>Fehlend</strong> <span class="mode-legend"><span class="mode-dot have"></span>Doppelt &nbsp; <span class="mode-dot want"></span>Fehlend</span>`;
 }
 
 function renderStats() {
@@ -148,8 +163,7 @@ function renderList(query) {
 }
 
 function renderGroup(name, code, meta, stickers) {
-  const activeSet = currentTab === "have" ? haveSet : wantSet;
-  const marked = stickers.filter(s => activeSet.has(s.id)).length;
+  const marked = stickers.filter(s => haveSet.has(s.id) || wantSet.has(s.id)).length;
   const isTeam = stickers.length > 0 && stickers[0].category === "team";
 
   let btns = "";
@@ -157,9 +171,7 @@ function renderGroup(name, code, meta, stickers) {
     btns = stickers.map(s => {
       const inHave = haveSet.has(s.id);
       const inWant = wantSet.has(s.id);
-      let cls = "";
-      if (currentTab === "have" && inHave) cls = " have";
-      else if (currentTab === "want" && inWant) cls = " want";
+      let cls = stickerStateCls(inHave, inWant);
       if (s.is_foil) cls += " foil";
       return `<button class="sticker-btn album-btn album-pos-${s.number}${cls}"
         data-id="${s.id}"
@@ -173,9 +185,7 @@ function renderGroup(name, code, meta, stickers) {
     btns = stickers.map(s => {
       const inHave = haveSet.has(s.id);
       const inWant = wantSet.has(s.id);
-      let cls = "";
-      if (currentTab === "have" && inHave) cls = "have";
-      else if (currentTab === "want" && inWant) cls = "want";
+      let cls = stickerStateCls(inHave, inWant);
       if (s.is_foil) cls += " foil";
       return `<button class="sticker-btn ${cls}" data-id="${s.id}" title="${s.description || ""}">
         <span class="s-code">${s.code}</span>
@@ -216,7 +226,12 @@ async function toggleSticker(id) {
 
   const btn = document.querySelector(`.sticker-btn[data-id="${id}"]`);
   if (btn) {
-    btn.classList.toggle(currentTab === "have" ? "have" : "want", set.has(id));
+    const inHave = haveSet.has(id);
+    const inWant = wantSet.has(id);
+    btn.className = btn.className
+      .replace(/\bhave\b|\bwant\b|\bboth\b/g, "").trim();
+    const stateCls = stickerStateCls(inHave, inWant).trim();
+    if (stateCls) btn.classList.add(...stateCls.split(" ").filter(Boolean));
   }
 
   renderStats();
